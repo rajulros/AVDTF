@@ -1,0 +1,86 @@
+name: "App01-Deployment"
+on: 
+  push:
+    branches:
+     - main
+  pull_request:
+    branches:
+     - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - Plan
+          - Plan&Apply
+          - Plan&Destroy
+
+permissions:
+      id-token: write
+      contents: read
+
+jobs:
+  analysis:
+    name: Analyse the Terraform
+    environment: dev
+    runs-on: ubuntu-latest
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TF_VAR_STORAGE_ACCOUNT: 'devopslumen'
+      TF_VAR_STORAGE_CONTAINER: 'tfstatefile'
+      ARM_ACCESS_KEY: ${{ secrets.AZURE_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v3
+
+      # - name: Log in with Azure
+      #   uses: azure/login@v1
+      #   with:
+      #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      -  name: Echo Secrets (for troubleshooting only)
+         run: |
+          echo "Client ID: ${{ secrets.AZURE_CLIENT_ID }}"
+          echo "Tenant ID: ${{ secrets.AZURE_TENANT_ID }}"
+          echo "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+      - name: Log in with Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.9
+
+      - name: Terraform Init
+        run: terraform init
+
+    
+      - name: Terraform plan
+        id: plan
+        if: ${{ github.event.inputs.action == 'plan&apply' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'plan&destroy' }}
+        run: terraform plan -out="main.tfplan" -var-file="deploy.tfvars" -input=false
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: |
+          echo "plan successful"
+          exit 1
+
+      - name: App01 Infra Deployment
+        if: ${{ github.event.inputs.action == 'plan&apply' }}
+        run: terraform apply --auto-approve "main.tfplan"
+
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.action == 'plan&destroy' }}
+        run: terraform destroy -auto-approve -var-file="deploy.tfvars"

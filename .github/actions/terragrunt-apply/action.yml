@@ -1,0 +1,23 @@
+name: Terragrunt Apply
+description: Terragrunt Apply
+
+runs:
+  using: composite
+  steps:
+    - name: "Terragrunt Init, Validate and Plan"
+      shell: bash
+      working-directory: "./${{ inputs.environment }}"
+      run: |
+        set -xeuo pipefail
+        terragrunt init --terragrunt-non-interactive
+        terragrunt run-all validate --terragrunt-ignore-dependency-errors
+        # Run default plan with output
+        terragrunt run-all plan -no-color -input=false -out tfplan --terragrunt-ignore-dependency-errors
+
+    - name: "Terragrunt Apply"
+      shell: bash
+      working-directory: "./${{ inputs.environment }}"
+      env:
+        TERRAGRUNT_NON_INTERACTIVE: true
+      run: |
+        terragrunt run-all apply -no-color tfplan --terragrunt-ignore-dependency-errors

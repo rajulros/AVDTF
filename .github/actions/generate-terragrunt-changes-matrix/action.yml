@@ -1,0 +1,39 @@
+name: generate-terragrunt-changes-matrix
+description: Generate the matrix list output for file changes in terragrunt
+
+inputs:
+  directories:
+    description: A whitespace-separated list of directories we need to build the matrix from
+    required: true
+outputs:
+  directory-matrix:
+    description: "The matrix of directories, environments, regions, and clean directory names"
+    value: ${{ steps.generate-matrix.outputs.matrix }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate Matrix
+      shell: bash
+      id: generate-matrix
+      run: |
+        for directory in $(echo "${{ inputs.directories }}"); do
+          environment=$(echo $directory | cut -d '/' -f 1)
+          
+          echo "{\"directory\":\"$directory\", \"environment\":\"$environment\"}" >> "${environment}-matrix.out"
+          echo "$environment" >> environments.out
+        done
+
+        separator=false
+        matrix="{"
+        for i in $(cat environments.out | sort | uniq); do 
+          if $separator; then
+            matrix+=","
+          fi
+          matrix+="\"$i\": {\"include\": [$(paste -d, -s $i-matrix.out)]}"
+          separator=true
+        done
+        matrix+="}"
+
+        echo "matrix = $matrix"
+        echo "matrix=${matrix}" >> $GITHUB_OUTPUT

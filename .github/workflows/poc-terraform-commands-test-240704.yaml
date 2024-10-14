@@ -1,0 +1,177 @@
+name: Terraform Plan on Comment
+
+on:
+  issue_comment:
+    types:
+        - created
+
+jobs:
+  do-terraform-plan:
+    if: contains(github.event.comment.body, 'do_terraform plan -p')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Project Name
+        id: extract-project
+        run: |
+          project_name=$(echo "${{ github.event.comment.body }}" | grep -oP '(?<=do_terraform plan -p )\w+')
+          echo "Project name: $project_name"
+          echo "TERRAFORM_PLAN_FOLDER=$project_name" >> $GITHUB_ENV
+
+      - name: Extract PR Number
+        id: get-pr-number
+        run: |
+          echo "PR_NUMBER=$(echo ${{ github.event.issue.pull_request.url }} | grep -o '[0-9]\+$')" >> $GITHUB_ENV
+
+      - name: Fetch PR Details
+        id: get-pr-details
+        uses: actions/github-script@v4
+        with:
+          script: |            
+            const pr = await github.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: process.env.PR_NUMBER,
+            });
+            core.setOutput("pr_head_ref", pr.data.head.ref);
+
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.get-pr-details.outputs.pr_head_ref }}
+          fetch-depth: 2
+
+
+      - name: Get Changed Files
+        id: get_changed_files
+        run: |
+          git fetch origin main
+          if git merge-base --is-ancestor HEAD origin/main; then
+            git diff --name-only origin/main...HEAD > changed_files.txt
+          elif git merge-base --is-ancestor origin/main HEAD; then
+            git diff --name-only origin/main...HEAD > changed_files.txt
+          else
+            echo "Merge base not found, using git ls-tree"
+            git ls-tree -r HEAD --name-only > changed_files.txt
+          fi
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          cat changed_files.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "Changed files:"
+          cat changed_files.txt
+
+      - name: Allow plan
+        id: folders
+        run: |
+          allow_plan='false'
+          for file in $CHANGED_FILES; do
+            if [[ $file == *.tf ]]; then
+              dir=$(dirname $file)
+              if [[ "$dir" == "$TERRAFORM_PLAN_FOLDER" ]]; then
+                echo "Allowing plan for $TERRAFORM_PLAN_FOLDER"
+                allow_plan='true'
+                break
+              fi
+            fi
+          done
+          echo "ALLOWED_PLAN=$allow_plan" >> $GITHUB_ENV
+
+      #      - name: Setup Terraform
+      #        uses: hashicorp/setup-terraform@v1
+      #        with:
+      #          terraform_version: latest
+
+      - name: Manually Setup Terraform
+        if : env.ALLOWED_PLAN == 'true'
+        run: |
+          wget https://releases.hashicorp.com/terraform/1.9.1/terraform_1.9.1_linux_amd64.zip
+          unzip terraform_1.9.1_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform version
+
+
+      - name: Generate Installation Access Token
+        env:
+          APP_ID: "109293"
+          CLIENT_ID: "Iv1.aa15c910576d2580"
+          INSTALLATION_ID: "16064591s"
+          PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        run: |
+          sudo apt-get install -y jq
+          now=$(date +%s)
+          iat=$((${now} - 60)) 
+          exp=$((${now} + 600))           
+          b64enc() { openssl base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n'; }          
+          header_json='{"typ":"JWT","alg":"RS256"}'        
+          header=$( echo -n "${header_json}" | b64enc )
+          payload_json='{
+            "iat":'"${iat}"',
+            "exp":'"${exp}"',
+            "iss":'"${APP_ID}"'
+          }'        
+          payload=$( echo -n "${payload_json}" | b64enc )
+          header_payload="${header}"."${payload}"
+          signature=$(echo -n "${header_payload}" | openssl dgst -sha256 -sign <(echo "${PRIVATE_KEY}") -binary | b64enc)
+          JWT="${header_payload}"."${signature}"
+          CURL_OUTPUT=$(curl -s -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github.v3+json" https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens)
+          TOKEN=$(echo $CURL_OUTPUT | jq -r '.token')               
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Error: TOKEN is empty. CURL Output: $CURL_OUTPUT. JWT: $JWT"
+            exit 1
+          fi
+          echo "GH_INSTALLATION_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Login to Azure CLI
+        if : env.ALLOWED_PLAN == 'true'
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        run: |
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+
+      - name: Terraform Plan
+        id: plan
+        if : env.ALLOWED_PLAN == 'true'
+        run: |
+          PLAN_REPORT_FILE="${GITHUB_WORKSPACE}/plan_report.txt"
+          plan_success="true"
+          echo "Terraform init+plan $TERRAFORM_PLAN_FOLDER"
+          cd $TERRAFORM_PLAN_FOLDER
+          terraform init
+          plan_output=$(terraform plan -out=tfplan-$TERRAFORM_PLAN_FOLDER)
+          terraform show -no-color "tfplan-$TERRAFORM_PLAN_FOLDER" > temp_plan.txt
+          printf -v plan_content "# Terraform Plan Result for %s\n\`\`\`\n%s\n\`\`\`\n" "$TERRAFORM_PLAN_FOLDER" "$(cat "temp_plan.txt")"
+          printf "%s" "$plan_content" > "$PLAN_REPORT_FILE"
+          if echo "$plan_output" | grep -q "Error:" ; then
+            plan_success="false"
+            echo "Error in Terraform plan for $TERRAFORM_PLAN_FOLDER"
+          fi
+          cd -          
+          echo "plan_success=$plan_success" >> $GITHUB_ENV
+          echo "plan_report_file_path=$PLAN_REPORT_FILE" >> $GITHUB_ENV
+
+      - name: Create PR Comment with Plan Results
+        if: env.TERRAFORM_PLAN_FOLDER != ''
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ env.GH_INSTALLATION_TOKEN }}
+          script: |
+            const issue_number = context.issue.number
+            let planResult = ''
+            if (process.env.ALLOWED_PLAN != 'true') {
+                let warn_message = 'Warning: you can only do_terraform plan -p on your pull request terraform files';
+                planResult = warn_message + '\n\n' + planResult;
+            } else {
+                const fs = require('fs');
+                const planResultPath = process.env.plan_report_file_path;
+                planResult = fs.readFileSync(planResultPath, 'utf8');
+            }
+
+            github.issues.createComment({
+              issue_number: issue_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: planResult
+            })

@@ -1,0 +1,231 @@
+name: Terraform PR Apply PoC
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+#      - name: Setup Terraform
+#        uses: hashicorp/setup-terraform@v1
+#        with:
+#          terraform_version: latest
+
+      - name: Manually Setup Terraform
+        run: |
+          wget https://releases.hashicorp.com/terraform/1.9.1/terraform_1.9.1_linux_amd64.zip
+          unzip terraform_1.9.1_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform version
+
+      - name: Get Changed Files
+        id: get_changed_files
+        run: |
+          git fetch origin main
+          if git merge-base --is-ancestor HEAD origin/main; then
+            git diff --name-only origin/main...HEAD > changed_files.txt
+          elif git merge-base --is-ancestor origin/main HEAD; then
+            git diff --name-only origin/main...HEAD > changed_files.txt
+          else
+            echo "Merge base not found, using git ls-tree"
+            git ls-tree -r HEAD --name-only > changed_files.txt
+          fi
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          cat changed_files.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "Changed files:"
+          cat changed_files.txt
+
+      - name: Identify Unique Terraform Folders
+        id: folders
+        run: |
+          folders=()
+          for file in $CHANGED_FILES; do
+            if [[ $file == *.tf ]]; then
+              dir=$(dirname $file)
+              if [[ ! " ${folders[*]} " =~ " ${dir} " ]]; then
+                folders+=("$dir")
+              fi
+            fi
+          done
+          folders_string=$(IFS=$'\n'; echo "${folders[*]}")
+          echo "Unique folders: $folders_string"
+          echo "TERRAFORM_FOLDERS=$folders_string" >> $GITHUB_ENV
+
+      - name: Generate Installation Access Token
+        env:
+          APP_ID: "109293"
+          CLIENT_ID: "Iv1.aa15c910576d2580"
+          INSTALLATION_ID: "16064591s"
+          PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        run: |
+          sudo apt-get install -y jq
+          now=$(date +%s)
+          iat=$((${now} - 60)) 
+          exp=$((${now} + 600))           
+          b64enc() { openssl base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n'; }          
+          header_json='{"typ":"JWT","alg":"RS256"}'        
+          header=$( echo -n "${header_json}" | b64enc )
+          payload_json='{
+            "iat":'"${iat}"',
+            "exp":'"${exp}"',
+            "iss":'"${APP_ID}"'
+          }'        
+          payload=$( echo -n "${payload_json}" | b64enc )
+          header_payload="${header}"."${payload}"
+          signature=$(echo -n "${header_payload}" | openssl dgst -sha256 -sign <(echo "${PRIVATE_KEY}") -binary | b64enc)
+          JWT="${header_payload}"."${signature}"
+          CURL_OUTPUT=$(curl -s -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github.v3+json" https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens)
+          TOKEN=$(echo $CURL_OUTPUT | jq -r '.token')               
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Error: TOKEN is empty. CURL Output: $CURL_OUTPUT. JWT: $JWT"
+            exit 1
+          fi
+          echo "GH_INSTALLATION_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Login to Azure CLI
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        run: |
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+
+      - name: Terraform Plan
+        id: plan
+        if: env.TERRAFORM_FOLDERS != ''
+        run: |
+          echo "Terraform folders: $TERRAFORM_FOLDERS"
+          IFS=$'\n' read -r -a folders <<< "$TERRAFORM_FOLDERS"
+          plan_success="true"
+          for folder in "${folders[@]}"; do
+            echo "Terraform init+plan $folder"
+            cd $folder
+            terraform init
+            plan_output=$(terraform plan -out=tfplan-$folder)
+            if echo "$plan_output" | grep -q "Error:" ; then
+              plan_success="false"
+              echo "Error in Terraform plan for $folder"
+            fi
+            cd -
+          done
+          echo "plan_success=$plan_success" >> $GITHUB_ENV
+
+      - name: Dump Plan Result
+        if: env.TERRAFORM_FOLDERS != ''
+        run: |
+          IFS=$'\n' read -r -a folders <<< "$TERRAFORM_FOLDERS"
+          PLAN_REPORT_FILE="plan_report.txt"
+          plan_content=''
+          destroy_detected="false"
+          prevent_destroy_detected="false"          
+          for folder in "${folders[@]}"; do
+            cd $folder
+            if grep -Rq 'prevent_destroy\s*=\s*true' .; then
+              prevent_destroy_detected="true"
+            fi
+            terraform show -no-color "tfplan-$folder" > "plan-$folder.txt"
+            if ! grep -q "0 to destroy" "plan-$folder.txt"; then
+              destroy_detected="true"
+            fi
+            printf -v plan_content "%s\n# Terraform Plan Result for %s\n\`\`\`\n%s\n\`\`\`\n" "$plan_content" "$folder" "$(cat "plan-$folder.txt")"
+            cd -
+          done
+          printf "%s" "$plan_content" > "$PLAN_REPORT_FILE"
+          echo "plan_report_file_path=$PLAN_REPORT_FILE" >> $GITHUB_ENV
+          echo "destroy_detected=$destroy_detected" >> $GITHUB_ENV
+          echo "prevent_destroy_detected=$prevent_destroy_detected" >> $GITHUB_ENV
+
+      - name: Create PR Comment with Plan Results
+        if: env.TERRAFORM_FOLDERS != ''
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ env.GH_INSTALLATION_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const planResultPath = process.env.plan_report_file_path;
+            let planResult = fs.readFileSync(planResultPath, 'utf8');
+            const issue_number = context.issue.number
+            const destroy_detected = process.env.destroy_detected === 'true';
+            const prevent_destroy_detected = process.env.prevent_destroy_detected === 'true';
+            let warn_message = '';
+            if (destroy_detected && prevent_destroy_detected) {
+                warn_message = 'Warning: This terraform apply could be destructive although we have detected some prevent_destroy. The apply will be skipped';
+                planResult = warn_message + '\n\n' + planResult;
+            } else if (destroy_detected) {
+                warn_message = 'Warning: This terraform apply is destructive so the apply will be skipped.';
+                planResult = warn_message + '\n\n' + planResult;
+            } else if (!planResult.trim()) {
+                planResult = 'No changes detected in Terraform plan.';
+            }
+
+            github.issues.createComment({
+              issue_number: issue_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: planResult
+            })
+
+      - name: Terraform Apply
+        if: env.TERRAFORM_FOLDERS != '' && success() && env.plan_success == 'true' && env.destroy_detected == 'false'
+        run: |
+          IFS=$'\n' read -r -a folders <<< "$TERRAFORM_FOLDERS"
+          for folder in "${folders[@]}"; do
+            echo "Applying Terraform plan for $folder"
+            cd $folder
+            terraform apply -auto-approve "tfplan-$folder"
+            cd -
+          done
+
+      - name: Update PR Status Check
+        if: success() && ((env.plan_success == 'true' && env.destroy_detected == 'false') || env.TERRAFORM_FOLDERS == '')
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.pull_request.head.sha;
+            const statusContext = 'TERRAFORM_STATUS_CHECK';
+            const issue_number = context.issue.number;
+            let state = '';
+            let description = '';
+            
+            if (process.env.TERRAFORM_FOLDERS == '') {
+              state = 'success';
+              description = 'No Terraform changes to process';
+            } else if (process.env.plan_success == 'true' && process.env.destroy_detected == 'false') {
+              state = 'success';
+              description = 'Terraform applied successfully';
+            } else if (process.env.plan_success == 'true') {
+               state = 'failure';
+               description = 'Terraform apply failed or plan was not successful';
+            } else {
+               state = 'pending';
+               description = 'Terraform apply was skipped';
+            }
+                          
+            github.issues.createComment({
+              issue_number,
+              owner,
+              repo,
+              body: description,
+            });
+            
+            github.repos.createCommitStatus({
+              owner,
+              repo,
+              sha,
+              state,
+              description,
+              context: statusContext,
+            });

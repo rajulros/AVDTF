@@ -1,0 +1,43 @@
+name: Deploy Azure VM using Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose the action to perform'
+        required: true
+        default: 'Plan'
+        type: choice
+        options:
+          - Plan
+          - Plan and Apply
+
+jobs:
+  terraform:
+    name: Deploy Azure VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0 # Set your desired Terraform version
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action == 'Plan' || github.event.inputs.action == 'Plan and Apply' }}
+        run: terraform plan
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.action == 'Plan and Apply' }}
+        run: terraform apply -auto-approve

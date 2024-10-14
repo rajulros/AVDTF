@@ -1,0 +1,20 @@
+name: Test connectivity
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Internal URL to test'
+        required: false
+        default: 'https://aks-shared-wklds-poc-centralus-01-zvljltpv.privatelink.centralus.azmk8s.io'
+      runner:
+        description: 'Runner to use'
+        required: false
+        default: 'vm-github-runner-azure-us-central-001'
+jobs:
+  test:
+    runs-on: ${{ github.event.inputs.runner }}
+    steps:
+      - name: Update and install curl
+        run: sudo apt-get update && sudo apt-get install -y curl
+      - name: Test connectivity
+        run: curl -k ${{ github.event.inputs.url }}

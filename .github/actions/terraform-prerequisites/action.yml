@@ -1,0 +1,21 @@
+name: Terraform Prerequisites
+description: Terraform Prerequisites
+
+runs:
+  using: composite
+  steps:
+    - name: Set up TFLint
+      uses: terraform-linters/setup-tflint@v1
+
+    - name: Initialize TFLint
+      shell: bash
+      run: tflint --init
+
+    - name: Run TFLint
+      shell: bash
+      run: tflint --chdir="./${{ inputs.environment }}"
+
+    - name: Run TFsec
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working-directory: "./${{ inputs.environment }}"

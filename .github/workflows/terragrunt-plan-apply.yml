@@ -1,0 +1,92 @@
+name: Terragrunt Plan and Apply
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - Plan
+          - Plan&Apply
+          - Plan&Destroy
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: "Environment"
+        required: true
+    secrets:
+      app_id_01:
+        required: true
+      app_key_01:
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  terragrunt-plan:
+    name: "Terragrunt Plan"
+    runs-on: 'vm-github-runner-azure-us-central-001'
+    environment: ${{ inputs.environment }}
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Git Config
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Terragrunt installer
+        uses: autero1/action-terragrunt@v1.3.1
+        with:
+          terragrunt_version: v0.67.6
+
+      - name: Prerequisites
+        uses: CenturyLink/ccoe-terraform-poc/.github/actions/terraform-prerequisites@main
+        with:
+          environment: ${{ inputs.environment }}
+          secrets: inherit
+
+      - name: TerragruntPlan
+        uses: CenturyLink/ccoe-terraform-poc/.github/actions/terragrunt-plan@main
+        with:
+          environment: ${{ inputs.environment }}
+          app-id: ${{ secrets.app_id_01 }}
+          private-key: ${{ secrets.app_key_01 }}
+
+  terragrunt_apply:
+    name: "Terragrunt Apply"
+    if: needs.terragrunt-plan.result == 'success'
+    needs: terragrunt-plan
+    runs-on: 'vm-github-runner-azure-us-central-001'
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    environment: ${{ inputs.environment }}_deploy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Terragrunt installer
+        uses: autero1/action-terragrunt@v1.3.1
+        with:
+          terragrunt_version: v0.67.6
+
+      - name: TerragruntApply
+        uses: CenturyLink/ccoe-terraform-poc/.github/actions/terragrunt-apply@main
+        with:
+          environment: ${{ inputs.environment }}
+          secrets: inherit

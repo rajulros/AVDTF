@@ -1,0 +1,69 @@
+name: "Infra-Deploy"
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - nonprod/**/terragrunt.hcl
+      - prod/**/terragrunt.hcl
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+
+jobs:
+  generate-folder-names:
+    name: pr create
+    runs-on: 'vm-github-runner-azure-us-central-001'
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.directory-matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find Terragrunt Changes
+        id: find-terragrunt-changes
+        uses: tj-actions/changed-files@v45
+        with:
+          dir_names: "true"
+          files: |
+            nonprod/**
+            prod/**
+          files_ignore: |
+            nonprod/**.md
+            prod/**.md
+        continue-on-error: true
+
+      - name: Generate Matrix
+        if: ${{ steps.find-terragrunt-changes.outputs.all_changed_files }}
+        uses: CenturyLink/ccoe-terraform-poc/.github/actions/generate-terragrunt-changes-matrix@main
+        id: generate-matrix
+        with:
+          directories: ${{ steps.find-terragrunt-changes.outputs.all_changed_files }}
+
+  terragrunt-plan-apply-nonprod:
+    if: fromJson(needs.generate-folder-names.outputs.matrix).nonprod != ''
+    needs:
+      - generate-folder-names
+    name: NonProd Terragrunt Plan and Apply
+    uses: CenturyLink/ccoe-terraform-poc/.github/workflows/terragrunt-plan-apply.yml@main
+    with:
+      environment: nonprod
+    secrets: inherit
+
+  terragrunt-plan-apply-prod:
+    if: fromJson(needs.generate-folder-names.outputs.matrix).prod != ''
+    needs:
+      - generate-folder-names
+    name: Prod Terragrunt Plan and Apply
+    uses: CenturyLink/ccoe-terraform-poc/.github/workflows/terragrunt-plan-apply.yml@main
+    with:
+      environment: prod
+    secrets: inherit

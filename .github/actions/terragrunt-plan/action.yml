@@ -1,0 +1,73 @@
+name: Terragrunt Plan
+description: Terragrunt Plan
+
+runs:
+  using: composite
+  steps:
+    - name: "Terragrunt Init, Validate"
+      shell: bash
+      working-directory: "./${{ inputs.environment }}"
+      env:
+        TERRAGRUNT_NON_INTERACTIVE: true
+      run: |
+        set -xeuo pipefail
+        terragrunt init
+        terragrunt run-all validate --terragrunt-ignore-dependency-errors
+
+    - name: "Terragrunt Plan"
+      shell: bash
+      working-directory: "./${{ inputs.environment }}"
+      env:
+        TERRAGRUNT_NON_INTERACTIVE: true
+      run: |
+        set -xeuo pipefail
+
+        terragrunt run-all plan -no-color -input=false -out tfplan --terragrunt-ignore-dependency-errors
+        
+        echo "####### Plan Output #######"
+        exec > >(tee -a "${GITHUB_WORKSPACE}/plan_output.txt") 2>&1 terragrunt run-all show -no-color tfplan --terragrunt-ignore-dependency-errors --terragrunt-parallelism 1
+
+    - name: Format output file
+      shell: bash
+      run: |
+        set -xeuo pipefail
+
+        echo "Formatting output file from ${{ matrix.directory }}"
+
+        mv "${GITHUB_WORKSPACE}/plan_output.txt" "${GITHUB_WORKSPACE}/plan_output.txt.orig"
+
+        echo 'Ran Plan for dir: `${{ matrix.directory }}`' >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo '<details><summary>Show Output </summary>' >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo '```diff' >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        cat "${GITHUB_WORKSPACE}/plan_output.txt.orig" >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo >> "${GITHUB_WORKSPACE}/plan_output.txt"
+        echo '```' >> "${GITHUB_WORKSPACE}/plan_output.txt"
+
+        echo "plan_report_file_path=${GITHUB_WORKSPACE}/plan_output.txt" >> $GITHUB_ENV
+
+    - name: Generate a token
+      id: generate-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+
+    - name: Create PR Comment with Plan Results
+      uses: actions/github-script@v4
+      with:
+        github-token: ${{ steps.generate-token.outputs.token }}
+        script: |
+          const issue_number = context.issue.number;
+          const planResultPath = process.env.plan_report_file_path;
+          const fs = require('fs');
+          const planResult = fs.readFileSync(planResultPath, 'utf8');
+
+          github.issues.createComment({
+            issue_number: issue_number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: planResult
+          })
