@@ -5,7 +5,7 @@ locals {
     oupath = "OU=WESTUS3,OU=WIN11,OU=Pooled,OU=SessionHost,OU=AVD,DC=Manageddevices,DC=in"
     domainusername = "adminuser"
     virtualmachinename = "vdvmlumen"
-    virtual_network_name = "example-network"
+    virtual_network_name = "AVD-TF-VNET"
     subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
     subnet_personal_hostpool_name = "vd-snet-personal-wklds-avd-poc-cus-01"
     subnet_pooled_hootpool_name = "snet-pool-wklds-avd-poc-cus-01"
