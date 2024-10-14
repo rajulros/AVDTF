@@ -3,7 +3,7 @@ locals {
     appvserveradminusername = "appvserveruser"
     domainname = "Manageddevices.in"
     oupath = "OU=WESTUS3,OU=WIN11,OU=Pooled,OU=SessionHost,OU=AVD,DC=Manageddevices,DC=in"
-    domainusername = "svcavddj"
+    domainusername = "svcavddj@manageddevices.in"
     virtualmachinename = "vdvmlumen"
     virtual_network_name = "AVD-TF-VNET"
     subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
