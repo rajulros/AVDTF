@@ -104,13 +104,13 @@ locals {
     secretnamedjpassword = "AVDDJPW"
 
     // storage
-    storage_account_name = "vdavdstorageaccount"
+    storage_account_name = "vdavdstorageaccount1"
     storageblobpename = "vdavdstorageblobpe"
     storagefilepename = "vdavdstoragefilepe"
-    diagstoragename = "vddiagstoragename"
-    fsstoragename = "vdfsstoragename"
-    artifactstoragename = "vdartifactstoragename"
-    filesharename = "vdlumenfilesharename"
+    diagstoragename = "vddiagstoragename1"
+    fsstoragename = "vdfsstoragename1"
+    artifactstoragename = "vdartifactstoragename1"
+    filesharename = "vdlumenfilesharename1"
 
     // AppV  3 VM Names
     appv_vm1_name = "appv-vm1"
