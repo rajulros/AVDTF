@@ -1,8 +1,8 @@
 locals {
     adminuser = "adminuser"
     appvserveradminusername = "appvserveruser"
-    domainname = "ditclouds.com"
-    oupath = "OU=AVD-Hosts,DC=ditclouds,DC=com"
+    domainname = "Manageddevices.com"
+    oupath = "OU=WESTUS3,OU=WIN11,OU=Pooled,OU=SessionHost,OU=AVD,DC=Manageddevices,DC=in"
     domainusername = "adminuser"
     virtualmachinename = "vdvmlumen"
     virtual_network_name = "example-network"
@@ -11,10 +11,11 @@ locals {
     subnet_pooled_hootpool_name = "snet-pool-wklds-avd-poc-cus-01"
     subnet_bastion_name = "AzureBastionSubnet"
     subnet_pe_name = "vd-snet-pe-avd-poc-cus-01"
-    resource_group_name_vnet = "lumen-avd-rg-03"
-    resource_group_name_shared = "AD"
-    resource_group_name_avd = "Vnet01"
-    resource_group_name_dns = "for-DNSZone"
+
+    resource_group_name_vnet = "RG-AVD-TF-WUS3"
+    resource_group_name_shared = "RG-AVD-TF-WUS3"
+    resource_group_name_avd = "RG-AVD-TF-WUS3"
+    resource_group_name_dns = "RG-AVD-TF-WUS3"
 
     nsg_image_name = "vd-nsg-image-avd-poc-cus-01"
     nsg_personal_hostpool_name = "vd-nsg-personal-wklds-avd-poc-cus-01"
@@ -22,11 +23,11 @@ locals {
     nsg_bastion_name = "AzureBastionSubnet"
     nsg_pe_name = "vd-nsg-pe-avd-poc-cus-01"
 
-    avd_rg_name = "Vnet01"
-    avd_rg_shared_name = "Vnet01"
+    avd_rg_name = "RG-AVD-TF-WUS3"
+    avd_rg_shared_name = "RG-AVD-TF-WUS3"
 
     // DNS RG Name
-    dns_rg_name = "for-DNSZone"
+    dns_rg_name = "RG-AVD-TF-WUS3"
 
     //Hostpool1
     virtual_desktop_host_pool1_load_balancer_type = "BreadthFirst"
@@ -99,8 +100,8 @@ locals {
 
     // Existing Keyvault
     keyvault_name_existing = "avd-domainjoin-for-lumen"
-    secretnamedjusername = "domain-join-account-username"
-    secretnamedjpassword = "domain-join-account-password"
+    secretnamedjusername = "FSusername"
+    secretnamedjpassword = "FSpassword"
 
     // storage
     storage_account_name = "vdavdstorageaccount"
@@ -146,7 +147,7 @@ locals {
     appv_version = "latest"
 
     // key Vault name
-    keyvault_name = "vdavdkey0023"
+    keyvault_name = "kvavd005"
 
     // Diag Workspace Name
     operationalinsights_workspace_name            = "OperationalInsights02939vd"
