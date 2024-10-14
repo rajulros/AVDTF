@@ -147,7 +147,7 @@ locals {
     appv_version = "latest"
 
     // key Vault name
-    keyvault_name = "kvavd007"
+    keyvault_name = "kvlumenavd007"
 
     // Diag Workspace Name
     operationalinsights_workspace_name            = "OperationalInsights02939vd"
