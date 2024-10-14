@@ -8,7 +8,7 @@ locals {
     virtual_network_name = "AVD-TF-VNET"
     subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
     subnet_personal_hostpool_name = "vd-snet-personal-wklds-avd-poc-cus-01"
-    subnet_pooled_hootpool_name = "snet-pool-wklds-avd-poc-cus-01"
+    subnet_pooled_hootpool_name = "vd-snet-pool-wklds-avd-poc-cus-01"
     subnet_bastion_name = "AzureBastionSubnet"
     subnet_pe_name = "vd-snet-pe-avd-poc-cus-01"
 
