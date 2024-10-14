@@ -1,7 +1,7 @@
 locals {
     adminuser = "adminuser"
     appvserveradminusername = "appvserveruser"
-    domainname = "Manageddevices.com"
+    domainname = "Manageddevices.in"
     oupath = "OU=WESTUS3,OU=WIN11,OU=Pooled,OU=SessionHost,OU=AVD,DC=Manageddevices,DC=in"
     domainusername = "adminuser"
     virtualmachinename = "vdvmlumen"
