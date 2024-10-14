@@ -100,7 +100,7 @@ locals {
 
     // Existing Keyvault
     keyvault_name_existing = "kvavd005"
-    secretnamedjusername = "AVDDJ"
+    secretnamedjusername = "AVDDJUN"
     secretnamedjpassword = "AVDDJPW"
 
     // storage
