@@ -99,9 +99,9 @@ locals {
 
 
     // Existing Keyvault
-    keyvault_name_existing = "avd-domainjoin-for-lumen"
-    secretnamedjusername = "FSusername"
-    secretnamedjpassword = "FSpassword"
+    keyvault_name_existing = "kvavd005"
+    secretnamedjusername = "AVDDJUSERNAME"
+    secretnamedjpassword = "AVDDJ"
 
     // storage
     storage_account_name = "vdavdstorageaccount"
@@ -147,7 +147,7 @@ locals {
     appv_version = "latest"
 
     // key Vault name
-    keyvault_name = "kvavd005"
+    keyvault_name = "kvavd006"
 
     // Diag Workspace Name
     operationalinsights_workspace_name            = "OperationalInsights02939vd"
