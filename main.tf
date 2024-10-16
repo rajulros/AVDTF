@@ -460,6 +460,12 @@ resource "azurerm_key_vault_secret" "example" {
   key_vault_id = data.azurerm_key_vault.vault.id
 }
 
+data "azurerm_key_vault_secret" "adminpassword" {
+  name         = "admin_password"
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
 
 // check the count
 module "avm-res-compute-virtualmachine" {
@@ -484,7 +490,7 @@ module "avm-res-compute-virtualmachine" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
   admin_username      = local.adminuser
-  admin_password      = "${data.azurerm_key_vault_secret.admin_password.value}"
+  admin_password      = "${data.azurerm_key_vault_secret.adminpassword.value}"
 
   # Image configuration
   source_image_reference = {
@@ -610,7 +616,7 @@ module "appV" {
   location            = var.location
   resource_group_name = local.resource_group_name_avd
   admin_username      = local.appvserveradminusername
-  admin_password      = random_password.admin_password.result
+  admin_password      = "${data.azurerm_key_vault_secret.adminpassword.value}"
 
   sku_size = each.value.sku_size
 
