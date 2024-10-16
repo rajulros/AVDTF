@@ -362,6 +362,13 @@ module "avm-res-storage-storageaccount" {
   }
 }
 
+ resource "azurerm_storage_share" "example" {
+    name                 = local.filesharename
+    storage_account_name = local.fsstoragename
+    quota                = 100
+    depends_on = [module.avm-res-storage-storageaccount]
+ }
+
 # resource "azurerm_storage_share" "example" {
 #   name                 = local.filesharename
 #   storage_account_name = local.fsstoragename
@@ -447,6 +454,13 @@ resource "random_password" "admin_password" {
   }
 }
 
+resource "azurerm_key_vault_secret" "example" {
+  name         = "admin_password"
+  value        = random_password.admin_password.result
+  key_vault_id = data.azurerm_key_vault.vault.id
+}
+
+
 // check the count
 module "avm-res-compute-virtualmachine" {
   for_each = { for vm in local.vm_instances : "${vm.category}-${vm.type}-${vm.instance_index}" => vm }
@@ -470,7 +484,7 @@ module "avm-res-compute-virtualmachine" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
   admin_username      = local.adminuser
-  admin_password      = random_password.admin_password.result
+  admin_password      = "${data.azurerm_key_vault_secret.admin_password.value}"
 
   # Image configuration
   source_image_reference = {
@@ -535,7 +549,7 @@ module "avm-res-compute-virtualmachine" {
         {
           "Name": "${local.domainname}",
           "OUPath": "${local.oupath}",
-          "User": "${local.domainusername}",
+          "User": "${data.azurerm_key_vault_secret.domainusername.value}",
           "Restart": "true",
           "Options": "3"
         }
@@ -640,7 +654,7 @@ module "appV" {
         {
           "Name": "${local.domainname}",
           "OUPath": "${local.oupath}",
-          "User": "${local.domainusername}",
+          "User": "${data.azurerm_key_vault_secret.domainusername.value}",
           "Restart": "true",
           "Options": "3"
         }
@@ -692,3 +706,13 @@ module "avm-res-network-publicipaddress" {
 #     environment = "dev"
 #   }
 # }
+
+#Azure Recovery Services Vault
+resource "azurerm_recovery_services_vault" "rsv" {
+  name                = local.recovery_vault_name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  sku                 = "Standard"
+
+  soft_delete_enabled = true
+}
