@@ -157,5 +157,3 @@ locals {
     //Recovery service vault
     recovery_vault_name = "rsv-avd-poc-01"
     }
-
-    
