@@ -102,6 +102,7 @@ locals {
     keyvault_name_existing = "kvavd005"
     secretnamedjusername = "AVDDJUN"
     secretnamedjpassword = "AVDDJPW"
+    secretnameadminpassword = "admin-password"
 
     // storage
     storage_account_name = "vdavdstorageaccount1"
