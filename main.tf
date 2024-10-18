@@ -434,7 +434,7 @@ data "azurerm_key_vault" "vault" {
  
 # Retrieve the domain join username from Azure Key Vault
 data "azurerm_key_vault_secret" "domain_username" {
-  name         = "domainusername"
+  name         = local.secretnamedjusername
   key_vault_id = data.azurerm_key_vault.vault.id
   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
 }
