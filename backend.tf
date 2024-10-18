@@ -3,7 +3,7 @@ terraform {
     resource_group_name  = "AVDDevOps"
     storage_account_name = "avddevopsautomation"
     container_name       = "tfstate"
-    key                  = "terraform7.tfstate"
+    key                  = "terraform8.tfstate"
 
   }
 }
