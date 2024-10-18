@@ -288,10 +288,26 @@ module "avm-res-keyvault-vault" {
   tenant_id           = var.tenant
   public_network_access_enabled = false
   legacy_access_policies_enabled = true
+  legacy_access_policies = {
+    test = {
+      object_id               = var.object_id
+      certificate_permissions = ["Get", "List"]
+      key_permissions = ["Get", "Create"]
+      secret_permissions = ["Set", "Get", "List", "Delete", "Purge", "Recover"]
+    }
+  }
+  secrets = {
+    test_secret = {
+      name = "admin-password"
+    }
+  }
+  secrets_value = {
+    test_secret = random_password.admin_password.result
+  }
   network_acls = {
     default_action             = "Deny"
     bypass                     = "AzureServices"
-    }
+  }
   private_endpoints = {
     primary = {
       subnet_resource_id = data.azurerm_subnet.pe.id
@@ -454,18 +470,11 @@ resource "random_password" "admin_password" {
   }
 }
 
-resource "azurerm_key_vault_secret" "example" {
-  name         = "admin-password"
-  value        = random_password.admin_password.result
-  key_vault_id = data.azurerm_key_vault.vault.id
-}
-
 data "azurerm_key_vault_secret" "adminpwd" {
   name         = "admin-password"
-  key_vault_id = data.azurerm_key_vault.vault.id
+  key_vault_id = module.avm-res-keyvault-vault.resource.id
   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
 }
-
 
 // check the count
 module "avm-res-compute-virtualmachine" {
