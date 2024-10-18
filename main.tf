@@ -288,10 +288,26 @@ module "avm-res-keyvault-vault" {
   tenant_id           = var.tenant
   public_network_access_enabled = false
   legacy_access_policies_enabled = true
+  legacy_access_policies = {
+    test = {
+      object_id               = var.object_id
+      certificate_permissions = ["Get", "List"]
+      key_permissions = ["Get", "Create"]
+      secret_permissions = ["Set", "Get", "List", "Delete", "Purge", "Recover"]
+    }
+  }
+  secrets = {
+    test_secret = {
+      name = "admin-password"
+    }
+  }
+  secrets_value = {
+    test_secret = random_password.admin_password.result
+  }
   network_acls = {
     default_action             = "Deny"
     bypass                     = "AzureServices"
-    }
+  }
   private_endpoints = {
     primary = {
       subnet_resource_id = data.azurerm_subnet.pe.id
@@ -446,6 +462,10 @@ resource "random_password" "admin_password" {
     constant = "same_password"
   }
 }
+data "azurerm_key_vault_secret" "adminpwd" {
+  name         = "admin-password"
+  key_vault_id = module.avm-res-keyvault-vault["resource_id"]
+}
 
 // check the count
 module "avm-res-compute-virtualmachine" {
@@ -470,7 +490,7 @@ module "avm-res-compute-virtualmachine" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
   admin_username      = local.adminuser
-  admin_password      = random_password.admin_password.result
+  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
 
   # Image configuration
   source_image_reference = {
@@ -535,7 +555,7 @@ module "avm-res-compute-virtualmachine" {
         {
           "Name": "${local.domainname}",
           "OUPath": "${local.oupath}",
-          "User": "${local.domainusername}",
+          "User": "${data.azurerm_key_vault_secret.domain_username.value}",
           "Restart": "true",
           "Options": "3"
         }
@@ -596,7 +616,7 @@ module "appV" {
   location            = var.location
   resource_group_name = local.resource_group_name_avd
   admin_username      = local.appvserveradminusername
-  admin_password      = random_password.admin_password.result
+  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
 
   sku_size = each.value.sku_size
 
@@ -640,7 +660,7 @@ module "appV" {
         {
           "Name": "${local.domainname}",
           "OUPath": "${local.oupath}",
-          "User": "${local.domainusername}",
+          "User": "${data.azurerm_key_vault_secret.domain_username.value}",
           "Restart": "true",
           "Options": "3"
         }
