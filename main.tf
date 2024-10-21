@@ -692,3 +692,15 @@ module "avm-res-network-publicipaddress" {
 #     environment = "dev"
 #   }
 # }
+
+#Azure Recovery Services vault
+module "resources_recovery_services_vault" {
+  source  = "azurerm/resources/azure//modules/recovery_services_vault"
+  version = "1.1.0"
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  name                = local.recovery_vault_name
+  sku                 = "Standard"
+  soft_delete_enabled = true
+  # insert the 2 required variables here
+}
