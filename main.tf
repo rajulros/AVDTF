@@ -166,6 +166,9 @@ resource "azurerm_subnet_network_security_group_association" "this" {
 
 locals {
   firewall_name = "avd-firewall"  
+  firewall_sku_name  = "AZFW_VNet"  
+  firewall_sku_tier  = "Standard"   
+  firewall_zones     = ["1", "2", "3"] 
 }
 
 module "avm-res-network-azurefirewall" {
@@ -175,9 +178,9 @@ module "avm-res-network-azurefirewall" {
   name                = local.firewall_name
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
-  firewall_sku_tier   = "Standard"
-  firewall_sku_name   = "AZFW_VNet"
-  firewall_zones      = ["1", "2", "3"]
+  firewall_sku_tier   = local.firewall_sku_tier
+  firewall_sku_name   = local.firewall_sku_name
+  firewall_zones      = local.firewall_zones
   firewall_ip_configuration = [
     {
       name                 = "ipconfig1"
