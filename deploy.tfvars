@@ -1,6 +1,6 @@
 location            = "WestUS3"
 name                = "aks-02"
 keyvault_name                                 = "lumen-avd-kv-04"
-object_id                                     = "08afb591-fb58-46c1-b797-76688967a5cf"
-tenant                                        = "c925fe9d-30b1-4191-acbf-4109845df16f"
+object_id                                     = "7f75b7a4-6804-4ee0-9afd-ff1c2b5b9c0b"
+tenant                                        = "71695e40-f167-42cd-a8c7-143f394885ec"
 storage_account_name                          = "lumenstorage1234"

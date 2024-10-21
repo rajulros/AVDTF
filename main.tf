@@ -468,7 +468,7 @@ module "avm-res-authorization-roleassignment" {
   source  = "Azure/avm-res-authorization-roleassignment/azurerm"
   version = "0.1.0"
   role_assignments_azure_resource_manager = {
-    user1_owner = {
+    user1_akvsecret = {
       principal_id         = var.object_id
       role_definition_name = "Key Vault Crypto Officer"
       scope                = "/subscriptions/93532d02-130f-4318-b508-9ac4fbf37f8d/resourceGroups/RG-AVD-TF-WUS3/providers/Microsoft.KeyVault/vaults/kvlumenavd007"
