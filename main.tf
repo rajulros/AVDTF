@@ -369,6 +369,7 @@ module "avm-res-storage-storageaccount" {
   }
 }
 
+
 # resource "azurerm_storage_share" "example" {
 #   name                 = local.filesharename
 #   storage_account_name = local.fsstoragename
