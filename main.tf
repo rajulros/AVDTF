@@ -155,8 +155,30 @@ resource "azurerm_subnet_network_security_group_association" "this" {
   subnet_id                 = each.value.subnet_id
   network_security_group_id = each.value.nsg_id
 }
+//firewalls
 
+locals {
+  firewall_name = "avd-firewall"  
+}
 
+module "avm-res-network-azurefirewall" {
+  source  = "Azure/avm-res-network-azurefirewall/azurerm"
+  version = "0.3.0"
+  # insert the 5 required variables here
+  name                = local.firewall_name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  firewall_sku_tier   = "Standard"
+  firewall_sku_name   = "AZFW_VNet"
+  firewall_zones      = ["1", "2", "3"]
+  firewall_ip_configuration = [
+    {
+      name                 = "ipconfig1"
+      subnet_id            = data.azurerm_subnet.pe.id
+      public_ip_address_id = module.avm-res-network-publicipaddress.public_ip_id
+    }
+  ]
+}
 // HP
 
 locals {
