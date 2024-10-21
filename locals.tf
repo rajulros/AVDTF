@@ -23,7 +23,7 @@ locals {
     nsg_pooled_hostpool_name = "vd-nsg-pool-wklds-avd-poc-cus-01"
     nsg_bastion_name = "AzureBastionSubnet"
     nsg_pe_name = "vd-nsg-pe-avd-poc-cus-01"
-    nsg_firewall_name = "nsg-azure-firewall-avd-poc-cus-01"
+    
 
     avd_rg_name = "RG-AVD-TF-WUS3"
     avd_rg_shared_name = "RG-AVD-TF-WUS3"

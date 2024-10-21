@@ -83,7 +83,7 @@ data "azurerm_private_dns_zone" "example_avd" {
 
 // NSG creation 5
 locals {
-  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name,local.nsg_firewall_name]
+  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
   security_rule = {
     example_rule = {
       name                       = "SSH"
@@ -149,8 +149,7 @@ locals {
     { subnet_id = data.azurerm_subnet.image.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_image_name].resource_id },
     { subnet_id = data.azurerm_subnet.personal_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_personal_hostpool_name].resource_id },
     { subnet_id = data.azurerm_subnet.pooled_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pooled_hostpool_name].resource_id },
-    { subnet_id = data.azurerm_subnet.pe.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pe_name].resource_id },
-    { subnet_id = data.azurerm_subnet.firewall.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_firewall_name].resource_id }
+    { subnet_id = data.azurerm_subnet.pe.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pe_name].resource_id }
 
   ]
 }
