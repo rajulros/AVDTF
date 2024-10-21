@@ -154,4 +154,7 @@ locals {
     operationalinsights_workspace_name            = "OperationalInsights02939vd"
 
     domain_name_avd = "privatelink.wvd.microsoft.com"
+
+    //Recovery service vault
+    recovery_vault_name = "rsv-avd-poc-01"
     }

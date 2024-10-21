@@ -462,6 +462,20 @@ resource "random_password" "admin_password" {
     constant = "same_password"
   }
 }
+
+//Roleassignment to AKV
+module "avm-res-authorization-roleassignment" {
+  source  = "Azure/avm-res-authorization-roleassignment/azurerm"
+  version = "0.1.0"
+  role_assignments_azure_resource_manager = {
+    user1_owner = {
+      principal_id         = var.object_id
+      role_definition_name = "Key Vault Crypto Officer"
+      scope                = "/subscriptions/93532d02-130f-4318-b508-9ac4fbf37f8d/resourceGroups/RG-AVD-TF-WUS3/providers/Microsoft.KeyVault/vaults/kvlumenavd007"
+    }
+  }
+}
+
 data "azurerm_key_vault_secret" "adminpwd" {
   name         = local.secretnameadminpassword
   #key_vault_id = module.avm-res-keyvault-vault["resource_id"]
@@ -713,3 +727,14 @@ module "avm-res-network-publicipaddress" {
 #     environment = "dev"
 #   }
 # }
+
+#Azure Recovery Services vault
+module "resources_recovery_services_vault" {
+  source  = "azurerm/resources/azure//modules/recovery_services_vault"
+  version = "1.1.0"
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  custom_name         = local.recovery_vault_name
+  sku                 = "Standard"
+  soft_delete_enabled = true
+}
