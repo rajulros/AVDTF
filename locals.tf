@@ -11,6 +11,7 @@ locals {
     subnet_pooled_hootpool_name = "vd-snet-pool-wklds-avd-poc-cus-01"
     subnet_bastion_name = "AzureBastionSubnet"
     subnet_pe_name = "vd-snet-pe-avd-poc-cus-01"
+    subnet_firewall_name = "AzureFirewallSubnet"
 
     resource_group_name_vnet = "RG-AVD-TF-WUS3"
     resource_group_name_shared = "RG-AVD-TF-WUS3"
@@ -22,6 +23,7 @@ locals {
     nsg_pooled_hostpool_name = "vd-nsg-pool-wklds-avd-poc-cus-01"
     nsg_bastion_name = "AzureBastionSubnet"
     nsg_pe_name = "vd-nsg-pe-avd-poc-cus-01"
+    nsg_firewall_name = "AzureFirewallSubnet"
 
     avd_rg_name = "RG-AVD-TF-WUS3"
     avd_rg_shared_name = "RG-AVD-TF-WUS3"

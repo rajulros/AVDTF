@@ -48,12 +48,18 @@ data "azurerm_subnet" "bastion" {
   virtual_network_name = data.azurerm_virtual_network.this.name
 }
 
+data "azurerm_subnet" "firewall" {
+  name                 = local.subnet_firewall_name
+  resource_group_name  = data.azurerm_resource_group.vnet.name
+  virtual_network_name = data.azurerm_virtual_network.this.name
+}
+
 // DNS
 
-data "azurerm_private_dns_zone" "example" {
-  name                = "privatelink.bastion.azure.com"
-  resource_group_name = local.dns_rg_name
-}
+# data "azurerm_private_dns_zone" "example" {
+#   name                = "privatelink.bastion.azure.com"
+#   resource_group_name = local.dns_rg_name 
+# }
 
 data "azurerm_private_dns_zone" "example_blob" {
   name                = "privatelink.blob.core.windows.net"
@@ -77,7 +83,7 @@ data "azurerm_private_dns_zone" "example_avd" {
 
 // NSG creation 5
 locals {
-  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
+  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name,local.nsg_firewall_name]
   security_rule = {
     example_rule = {
       name                       = "SSH"
@@ -143,7 +149,9 @@ locals {
     { subnet_id = data.azurerm_subnet.image.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_image_name].resource_id },
     { subnet_id = data.azurerm_subnet.personal_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_personal_hostpool_name].resource_id },
     { subnet_id = data.azurerm_subnet.pooled_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pooled_hostpool_name].resource_id },
-    { subnet_id = data.azurerm_subnet.pe.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pe_name].resource_id }
+    { subnet_id = data.azurerm_subnet.pe.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pe_name].resource_id },
+    { subnet_id = data.azurerm_subnet.firewall.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_firewall_name].resource_id }
+
   ]
 }
 
@@ -174,7 +182,7 @@ module "avm-res-network-azurefirewall" {
   firewall_ip_configuration = [
     {
       name                 = "ipconfig1"
-      subnet_id            = data.azurerm_subnet.pe.id
+      subnet_id            = data.azurerm_subnet.firewall.id
       public_ip_address_id = module.avm-res-network-publicipaddress.public_ip_id
     }
   ]
