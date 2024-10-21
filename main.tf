@@ -462,11 +462,11 @@ resource "random_password" "admin_password" {
     constant = "same_password"
   }
 }
-data "azurerm_key_vault_secret" "adminpwd" {
-  name         = local.secretnameadminpassword
+#data "azurerm_key_vault_secret" "adminpwd" {
+ # name         = local.secretnameadminpassword
   #key_vault_id = module.avm-res-keyvault-vault["resource_id"]
-  key_vault_id = "/subscriptions/93532d02-130f-4318-b508-9ac4fbf37f8d/resourceGroups/RG-AVD-TF-WUS3/providers/Microsoft.KeyVault/vaults/kvlumenavd007"
-}
+ # key_vault_id = "/subscriptions/93532d02-130f-4318-b508-9ac4fbf37f8d/resourceGroups/RG-AVD-TF-WUS3/providers/Microsoft.KeyVault/vaults/kvlumenavd007"
+#}
 
 // check the count
 module "avm-res-compute-virtualmachine" {
@@ -491,7 +491,7 @@ module "avm-res-compute-virtualmachine" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
   admin_username      = local.adminuser
-  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+  admin_password      = random_password.admin_password.result
 
   # Image configuration
   source_image_reference = {
@@ -617,7 +617,7 @@ module "appV" {
   location            = var.location
   resource_group_name = local.resource_group_name_avd
   admin_username      = local.appvserveradminusername
-  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+  admin_password      = random_password.admin_password.result
 
   sku_size = each.value.sku_size
 
