@@ -226,12 +226,12 @@ locals {
       preferred_app_group_type = local.virtual_desktop_host_pool4_preferred_app_group_type
     }
   ]
-   diagnostic_settings = {
-    to_law = {
-      name                  = "to-law"
-      workspace_resource_id = module.avm-res-operationalinsights-workspace.resource.id
-    }
-    }
+  #  diagnostic_settings = {
+  #   to_law = {
+  #     name                  = "to-law"
+  #     workspace_resource_id = module.avm-res-operationalinsights-workspace.resource.id
+  #   }
+  #   }
 }
 
 module "HP" {
@@ -256,7 +256,7 @@ module "HP" {
       private_service_connection_name = "hostpoolsc"
     }
   }
-  diagnostic_settings = local.diagnostic_settings
+  # diagnostic_settings = local.diagnostic_settings
 }
 
 //Remote Apps
