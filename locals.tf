@@ -156,3 +156,5 @@ locals {
 
     domain_name_avd = "privatelink.wvd.microsoft.com"
     }
+
+    
