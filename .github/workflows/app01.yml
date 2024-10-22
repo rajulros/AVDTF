@@ -78,8 +78,8 @@ jobs:
         run: |
           if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
             echo "Main file from appv folder will be used."
-            echo "TFPLAN_PATH=App-v/main.tfplan" >> $GITHUB_ENV
-            echo "TFVARS_PATH=App-v/deploy.tfvars" >> $GITHUB_ENV
+            echo "TFPLAN_PATH=Appv/main.tfplan" >> $GITHUB_ENV
+            echo "TFVARS_PATH=Appv/deploy.tfvars" >> $GITHUB_ENV
           else
             echo "Main file from root folder will be used."
             echo "TFPLAN_PATH=main.tfplan" >> $GITHUB_ENV
