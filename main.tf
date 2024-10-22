@@ -298,7 +298,7 @@ module "avm-res-keyvault-vault" {
   }
   secrets = {
     test_secret = {
-      name = "admin-password"
+      name = local.secretnameadminpassword
     }
   }
   secrets_value = {
@@ -463,8 +463,9 @@ resource "random_password" "admin_password" {
   }
 }
 data "azurerm_key_vault_secret" "adminpwd" {
-  name         = "admin-password"
-  key_vault_id = module.avm-res-keyvault-vault["resource_id"]
+  name         = local.secretnameadminpassword
+  #key_vault_id = module.avm-res-keyvault-vault["resource_id"]
+  key_vault_id = "/subscriptions/93532d02-130f-4318-b508-9ac4fbf37f8d/resourceGroups/RG-AVD-TF-WUS3/providers/Microsoft.KeyVault/vaults/kvlumenavd007"
 }
 
 // check the count
