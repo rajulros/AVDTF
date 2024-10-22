@@ -88,7 +88,7 @@ jobs:
         id: set-working-dir
         run: |
           if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
-            echo "WORKING_DIRECTORY=appv" >> $GITHUB_ENV
+            echo "WORKING_DIRECTORY=Appv" >> $GITHUB_ENV
           else
             echo "WORKING_DIRECTORY=." >> $GITHUB_ENV
           fi
