@@ -1,4 +1,4 @@
-name: "App01-Deployment"
+name: "AVD & Dependent Resources Deployment"
 on: 
   push:
     branches:
@@ -109,7 +109,7 @@ jobs:
           echo "plan failed"
           exit 1
 
-      - name: App01 Infra Deployment
+      - name: AVD & Dependent Infra Resource Deployment
         working-directory: ${{ env.WORKING_DIRECTORY }}
         if: ${{ github.event.inputs.action == 'Plan&Apply' }}
         run: terraform apply --auto-approve "main.tfplan"
