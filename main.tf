@@ -189,6 +189,84 @@ module "avm-res-network-azurefirewall" {
     }
   ]
 }
+
+# locals {
+#   network_rule_collection = [
+#     {
+#       name     = "network-rule-collection"
+#       priority = 100
+#       rules = [
+#         {
+#           name                   = "rule01"
+#           rule_type              = "NetworkRule"
+#           action                 = "Allow"
+#           source_addresses       = ["10.0.0.0/16"]
+#           destination_addresses  = ["*"]
+#           destination_ports      = ["443"]
+#           protocols              = ["TCP"]
+#         }
+#       ]
+#     }
+#   ]
+# }
+
+locals {
+  firewall_policy_rule_collection_group = {
+    name     = "rules"
+    priority = 100
+    network_rule_collection = [
+      {
+        action   = "Allow"
+        name     = "net-rule"
+        priority = 100
+        rule = [
+          {
+            name                  = "OutboundToInternet"
+            description           = "Allow traffic outbound to the Internet"
+            destination_addresses = ["0.0.0.0/0"]
+            destination_ports     = ["443"]
+            source_addresses      = ["10.0.0.0/24"]
+            protocols             = ["TCP"]
+          }
+        ]
+      }
+    ]
+    application_rule_collection = [
+      {
+        action   = "Allow"
+        name     = "app-rule"
+        priority = 100
+        rule = [
+          {
+            name             = "AllowAll"
+            description      = "Allow traffic to Microsoft.com"
+            source_addresses = ["10.0.0.0/24"]
+            protocols = [
+              {
+                port = 443
+                type = "Https"
+              }
+            ]
+            destination_fqdns = ["microsoft.com"]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+module "avm-res-network-firewallpolicy_rule_collection_groups" {
+  source  = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+  version = "0.3.1"
+  firewall_policy_rule_collection_group_firewall_policy_id = module.avm-res-network-azurefirewall.resource_id
+  firewall_policy_rule_collection_group_name               = local.firewall_policy_rule_collection_group.name
+  firewall_policy_rule_collection_group_priority           = local.firewall_policy_rule_collection_group.priority
+  firewall_policy_rule_collection_group_network_rule_collection = local.firewall_policy_rule_collection_group.network_rule_collection
+  firewall_policy_rule_collection_group_application_rule_collection = local.firewall_policy_rule_collection_group.application_rule_collection
+}
+
+
+
 // HP
 
 locals {
