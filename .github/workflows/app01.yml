@@ -99,8 +99,9 @@ jobs:
 
       - name: Terraform plan
         id: plan
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         if: ${{ github.event.inputs.action == 'Plan&Apply' || github.event.inputs.action == 'Plan' || github.event.inputs.action == 'Plan&Destroy' }}
-        run: terraform plan -out="${{ env.TFPLAN_PATH }}" -var-file="${{ env.TFVARS_PATH }}" 
+        run: terraform plan -out="main.tfplan" -var-file="deploy.tfvars" 
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
