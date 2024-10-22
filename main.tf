@@ -83,7 +83,7 @@ data "azurerm_private_dns_zone" "example_avd" {
 
 // NSG creation 5
 locals {
-  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
+  nsg_names = [ local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
   security_rule = {
     example_rule = {
       name                       = "SSH"
@@ -258,7 +258,7 @@ locals {
 module "avm-res-network-firewallpolicy_rule_collection_groups" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
   version = "0.3.1"
-  firewall_policy_rule_collection_group_firewall_policy_id = module.avm-res-network-azurefirewall.resource_id
+  firewall_policy_rule_collection_group_firewall_policy_id = module.avm-res-network-azurefirewall.resource.id
   firewall_policy_rule_collection_group_name               = local.firewall_policy_rule_collection_group.name
   firewall_policy_rule_collection_group_priority           = local.firewall_policy_rule_collection_group.priority
   firewall_policy_rule_collection_group_network_rule_collection = local.firewall_policy_rule_collection_group.network_rule_collection
