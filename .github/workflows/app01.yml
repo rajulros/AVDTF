@@ -70,9 +70,6 @@ jobs:
         with:
           terraform_version: 1.9
 
-      - name: Terraform Init
-        run: terraform init
-
       - name: Set Main File Path
         id: set-path
         run: |
@@ -80,20 +77,20 @@ jobs:
             echo "Main file from appv folder will be used."
             echo "TFPLAN_PATH=Appv/main.tfplan" >> $GITHUB_ENV
             echo "TFVARS_PATH=Appv/deploy.tfvars" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH="Appv/backend.tf" >> $GITHUB_ENV
           else
             echo "Main file from root folder will be used."
             echo "TFPLAN_PATH=main.tfplan" >> $GITHUB_ENV
             echo "TFVARS_PATH=deploy.tfvars" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH="backend.tf" >> $GITHUB_ENV
           fi
-      - name: Print Terraform Paths
-        run: |           
-            echo "TFPLAN_PATH: $TFPLAN_PATH"
-            echo "TFVARS_PATH: $TFVARS_PATH"
+      - name: Terraform Init
+        run: terraform init -backend-config="${{ env.BACKEND_CONFIG_PATH }}"
 
       - name: Terraform plan
         id: plan
         if: ${{ github.event.inputs.action == 'Plan&Apply' || github.event.inputs.action == 'Plan' || github.event.inputs.action == 'Plan&Destroy' }}
-        run: terraform plan -out="${{ env.TFPLAN_PATH }}" -var-file="${{ env.TFVARS_PATH }}"
+        run: terraform plan -out="${{ env.TFPLAN_PATH }}" -var-file="${{ env.TFVARS_PATH }}" 
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
