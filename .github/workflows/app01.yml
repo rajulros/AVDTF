@@ -110,10 +110,12 @@ jobs:
           exit 1
 
       - name: App01 Infra Deployment
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         if: ${{ github.event.inputs.action == 'Plan&Apply' }}
-        run: terraform apply --auto-approve "${{ env.TFPLAN_PATH }}"
+        run: terraform apply --auto-approve "main.tfplan"
 
       - name: Terraform Destroy
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         if: ${{ github.event.inputs.action == 'Plan&Destroy' }}
-        run: terraform destroy -auto-approve -var-file="${{ env.TFVARS_PATH }}"
+        run: terraform destroy -auto-approve -var-file="deploy.tfvars"
      
