@@ -169,7 +169,7 @@ module "appV" {
       ip_configurations = {
         ipconfig1 = {
           name                          = "internal"
-          private_ip_subnet_resource_id = data.azurerm_subnet.personal_hostpool.id
+          private_ip_subnet_resource_id = data.azurerm_subnet.image.id
         }
       }
     }
