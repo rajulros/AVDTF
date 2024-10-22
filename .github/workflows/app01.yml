@@ -77,12 +77,12 @@ jobs:
             echo "Main file from appv folder will be used."
             echo "TFPLAN_PATH=Appv/main.tfplan" >> $GITHUB_ENV
             echo "TFVARS_PATH=Appv/deploy.tfvars" >> $GITHUB_ENV
-            echo "BACKEND_CONFIG_PATH="Appv/backend.tf" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH=Appv/backend.tf" >> $GITHUB_ENV
           else
             echo "Main file from root folder will be used."
             echo "TFPLAN_PATH=main.tfplan" >> $GITHUB_ENV
             echo "TFVARS_PATH=deploy.tfvars" >> $GITHUB_ENV
-            echo "BACKEND_CONFIG_PATH="backend.tf" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH=backend.tf" >> $GITHUB_ENV
           fi
       - name: Terraform Init
         run: terraform init -backend-config="${{ env.BACKEND_CONFIG_PATH }}"
