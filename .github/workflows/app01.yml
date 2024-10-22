@@ -8,6 +8,14 @@ on:
      - main
   workflow_dispatch:
     inputs:
+      Infrastructure:
+        description: 'Choose Infrastructure Component'
+        required: true
+        default: 'AVD Infrastructure'
+        type: choice
+        options:
+          - AVD Infrastructure
+          - Appv Infrastructure
       action:
         description: 'Choose action to perform'
         required: true
@@ -65,22 +73,34 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-    
+      - name: Set Main File Path
+        id: set-path
+        run: |
+          if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
+            echo "Main file from appv folder will be used."
+            echo "TFPLAN_PATH=App-v/main.tfplan" >> $GITHUB_ENV
+            echo "TFVARS_PATH=App-v/deploy.tfvars" >> $GITHUB_ENV
+          else
+            echo "Main file from root folder will be used."
+            echo "TFPLAN_PATH=main.tfplan" >> $GITHUB_ENV
+            echo "TFVARS_PATH=deploy.tfvars" >> $GITHUB_ENV
+          fi
       - name: Terraform plan
         id: plan
-        if: ${{ github.event.inputs.action == 'plan&apply' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'plan&destroy' }}
-        run: terraform plan -out="main.tfplan" -var-file="deploy.tfvars" -input=false
+        if: ${{ github.event.inputs.action == 'Plan&Apply' || github.event.inputs.action == 'Plan' || github.event.inputs.action == 'Plan&Destroy' }}
+        run: terraform plan -out="${{ env.TFPLAN_PATH }}" -var-file="${{ env.TFVARS_PATH }}"
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: |
-          echo "plan successful"
+          echo "plan failed"
           exit 1
 
       - name: App01 Infra Deployment
-        if: ${{ github.event.inputs.action == 'plan&apply' }}
-        run: terraform apply --auto-approve "main.tfplan"
+        if: ${{ github.event.inputs.action == 'Plan&Apply' }}
+        run: terraform apply --auto-approve "${{ env.TFPLAN_PATH }}"
 
       - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'plan&destroy' }}
-        run: terraform destroy -auto-approve -var-file="deploy.tfvars"
+        if: ${{ github.event.inputs.action == 'Plan&Destroy' }}
+        run: terraform destroy -auto-approve -var-file="${{ env.TFVARS_PATH }}"
+     
