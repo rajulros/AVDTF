@@ -6,7 +6,7 @@ locals {
     domainusername = "svcavddj@manageddevices.in"
     virtualmachinename = "vdvmlumen"
     virtual_network_name = "AVD-TF-VNET"
-    subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
+    #subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
     subnet_personal_hostpool_name = "vd-snet-personal-wklds-avd-poc-cus-01"
     subnet_pooled_hootpool_name = "vd-snet-pool-wklds-avd-poc-cus-01"
     subnet_bastion_name = "AzureBastionSubnet"
@@ -18,7 +18,7 @@ locals {
     resource_group_name_avd = "RG-AVD-TF-WUS3"
     resource_group_name_dns = "RG-AVD-TF-WUS3"
 
-    nsg_image_name = "vd-nsg-image-avd-poc-cus-01"
+    #nsg_image_name = "vd-nsg-image-avd-poc-cus-01"
     nsg_personal_hostpool_name = "vd-nsg-personal-wklds-avd-poc-cus-01"
     nsg_pooled_hostpool_name = "vd-nsg-pool-wklds-avd-poc-cus-01"
     nsg_bastion_name = "AzureBastionSubnet"
