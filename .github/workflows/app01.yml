@@ -84,7 +84,16 @@ jobs:
             echo "TFVARS_PATH=deploy.tfvars" >> $GITHUB_ENV
             echo "BACKEND_CONFIG_PATH=backend.tf" >> $GITHUB_ENV
           fi
+      - name: Set Working Directory
+        id: set-working-dir
+        run: |
+          if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
+            echo "WORKING_DIRECTORY=appv" >> $GITHUB_ENV
+          else
+            echo "WORKING_DIRECTORY=." >> $GITHUB_ENV
+
       - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: terraform init
 
       - name: Terraform plan
