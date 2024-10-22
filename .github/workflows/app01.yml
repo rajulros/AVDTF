@@ -91,6 +91,7 @@ jobs:
             echo "WORKING_DIRECTORY=appv" >> $GITHUB_ENV
           else
             echo "WORKING_DIRECTORY=." >> $GITHUB_ENV
+          fi
 
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIRECTORY }}
