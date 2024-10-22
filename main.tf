@@ -201,7 +201,7 @@ module "firewall_policy" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.avd.name
   firewall_policy_dns = {
-    proxy_enabled = false
+    proxy_enabled = true
   }
 }
 
