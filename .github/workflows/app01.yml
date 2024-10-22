@@ -1,4 +1,4 @@
-name: "AVD & Dependent Resources Deployment"
+name: "AVD & Dependant Resources Deployment"
 on: 
   push:
     branches:
