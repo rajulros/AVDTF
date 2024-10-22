@@ -573,108 +573,108 @@ module "avm-res-compute-virtualmachine" {
 
 
 
-# vm1 for AppV
-locals {
-  appv_vms = [
-    {
-      name = local.appv_vm1_name,
-      sku_size = local.appv_vm1_sku_size,
-      data_disks = local.appv_vm1_data_disk_size
-    },
-    {
-      name = local.appv_vm2_name,
-      sku_size = local.appv_vm2_sku_size,
-      data_disks = local.appv_vm2_data_disk_size
-    },
-    {
-      name = local.appv_vm3_name,
-      sku_size = local.appv_vm3_sku_size,
-      data_disks = local.appv_vm3_data_disk_size
-    }
-  ]
-}
+# # vm1 for AppV
+# locals {
+#   appv_vms = [
+#     {
+#       name = local.appv_vm1_name,
+#       sku_size = local.appv_vm1_sku_size,
+#       data_disks = local.appv_vm1_data_disk_size
+#     },
+#     {
+#       name = local.appv_vm2_name,
+#       sku_size = local.appv_vm2_sku_size,
+#       data_disks = local.appv_vm2_data_disk_size
+#     },
+#     {
+#       name = local.appv_vm3_name,
+#       sku_size = local.appv_vm3_sku_size,
+#       data_disks = local.appv_vm3_data_disk_size
+#     }
+#   ]
+# }
 
-module "appV" {
-  for_each = { for vm in local.appv_vms : vm.name => vm }
-  source   = "Azure/avm-res-compute-virtualmachine/azurerm"
-  version  = "0.16.0"
+# module "appV" {
+#   for_each = { for vm in local.appv_vms : vm.name => vm }
+#   source   = "Azure/avm-res-compute-virtualmachine/azurerm"
+#   version  = "0.16.0"
 
-  # Required variables
-  network_interfaces = {
-    example_nic = {
-      name = "${each.key}-nic"
-      ip_configurations = {
-        ipconfig1 = {
-          name                          = "internal"
-          private_ip_subnet_resource_id = data.azurerm_subnet.personal_hostpool.id
-        }
-      }
-    }
-  }
+#   # Required variables
+#   network_interfaces = {
+#     example_nic = {
+#       name = "${each.key}-nic"
+#       ip_configurations = {
+#         ipconfig1 = {
+#           name                          = "internal"
+#           private_ip_subnet_resource_id = data.azurerm_subnet.personal_hostpool.id
+#         }
+#       }
+#     }
+#   }
 
-  zone                = "1"
-  name                = each.value.name
-  location            = var.location
-  resource_group_name = local.resource_group_name_avd
-  admin_username      = local.appvserveradminusername
-  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+#   zone                = "1"
+#   name                = each.value.name
+#   location            = var.location
+#   resource_group_name = local.resource_group_name_avd
+#   admin_username      = local.appvserveradminusername
+#   admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
 
-  sku_size = each.value.sku_size
+#   sku_size = each.value.sku_size
 
-  # Image configuration
-  source_image_reference = {
-    offer     = local.appv_offer
-    publisher = local.appv_publisher
-    sku       = local.appv_sku
-    version   = local.appv_version
-  }
+#   # Image configuration
+#   source_image_reference = {
+#     offer     = local.appv_offer
+#     publisher = local.appv_publisher
+#     sku       = local.appv_sku
+#     version   = local.appv_version
+#   }
 
-  # Optional variables (add as needed)
-  os_disk = {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
+#   # Optional variables (add as needed)
+#   os_disk = {
+#     caching              = "ReadWrite"
+#     storage_account_type = "Standard_LRS"
+#   }
 
-  data_disk_managed_disks = { for disk in each.value.data_disks : disk.name => {
-    create_option        = "Empty"
-    disk_size_gb         = disk.size_gb
-    managed_disk_type    = disk.type
-    storage_account_type = disk.type
-    caching              = "ReadWrite"
-    lun                  = disk.lun
-    name                 = disk.name
-  }}
+#   data_disk_managed_disks = { for disk in each.value.data_disks : disk.name => {
+#     create_option        = "Empty"
+#     disk_size_gb         = disk.size_gb
+#     managed_disk_type    = disk.type
+#     storage_account_type = disk.type
+#     caching              = "ReadWrite"
+#     lun                  = disk.lun
+#     name                 = disk.name
+#   }}
 
-  tags = {
-    environment = "dev"
-  }
+#   tags = {
+#     environment = "dev"
+#   }
 
-  extensions = {
-    "dj" = {
-      name                       = "domainjoin"
-      publisher                  = "Microsoft.Compute"
-      type                       = "JsonADDomainExtension"
-      type_handler_version       = "1.3"
-      auto_upgrade_minor_version = true
+#   extensions = {
+#     "dj" = {
+#       name                       = "domainjoin"
+#       publisher                  = "Microsoft.Compute"
+#       type                       = "JsonADDomainExtension"
+#       type_handler_version       = "1.3"
+#       auto_upgrade_minor_version = true
     
-      settings = <<-SETTINGS
-        {
-          "Name": "${local.domainname}",
-          "OUPath": "${local.oupath}",
-          "User": "${data.azurerm_key_vault_secret.domain_username.value}",
-          "Restart": "true",
-          "Options": "3"
-        }
-        SETTINGS
+#       settings = <<-SETTINGS
+#         {
+#           "Name": "${local.domainname}",
+#           "OUPath": "${local.oupath}",
+#           "User": "${data.azurerm_key_vault_secret.domain_username.value}",
+#           "Restart": "true",
+#           "Options": "3"
+#         }
+#         SETTINGS
     
-      protected_settings = <<-PSETTINGS
-        {
-          "Password": "${data.azurerm_key_vault_secret.domain_password.value}"
-        }
-        PSETTINGS
-    }
-  }
-}
+#       protected_settings = <<-PSETTINGS
+#         {
+#           "Password": "${data.azurerm_key_vault_secret.domain_password.value}"
+#         }
+#         PSETTINGS
+#     }
+#   }
+# }
 
 # Azure Bastion
 module "avm-res-network-publicipaddress" {
