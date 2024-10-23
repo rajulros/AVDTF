@@ -1,4 +1,4 @@
-name: "App01-Deployment"
+name: "AVD & Dependant Resources Deployment"
 on: 
   push:
     branches:
@@ -8,6 +8,14 @@ on:
      - main
   workflow_dispatch:
     inputs:
+      Infrastructure:
+        description: 'Choose Infrastructure Component'
+        required: true
+        default: 'AVD Infrastructure'
+        type: choice
+        options:
+          - AVD Infrastructure
+          - Appv Infrastructure
       action:
         description: 'Choose action to perform'
         required: true
@@ -62,25 +70,52 @@ jobs:
         with:
           terraform_version: 1.9
 
+      - name: Set Main File Path
+        id: set-path
+        run: |
+          if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
+            echo "Main file from appv folder will be used."
+            echo "TFPLAN_PATH=Appv/main.tfplan" >> $GITHUB_ENV
+            echo "TFVARS_PATH=Appv/deploy.tfvars" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH=Appv/backend.tf" >> $GITHUB_ENV
+          else
+            echo "Main file from root folder will be used."
+            echo "TFPLAN_PATH=main.tfplan" >> $GITHUB_ENV
+            echo "TFVARS_PATH=deploy.tfvars" >> $GITHUB_ENV
+            echo "BACKEND_CONFIG_PATH=backend.tf" >> $GITHUB_ENV
+          fi
+      - name: Set Working Directory
+        id: set-working-dir
+        run: |
+          if [[ "${{ github.event.inputs.Infrastructure }}" == "Appv Infrastructure" ]]; then
+            echo "WORKING_DIRECTORY=Appv" >> $GITHUB_ENV
+          else
+            echo "WORKING_DIRECTORY=." >> $GITHUB_ENV
+          fi
+
       - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: terraform init
 
-    
       - name: Terraform plan
         id: plan
-        if: ${{ github.event.inputs.action == 'plan&apply' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'plan&destroy' }}
-        run: terraform plan -out="main.tfplan" -var-file="deploy.tfvars" -input=false
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.action == 'Plan&Apply' || github.event.inputs.action == 'Plan' || github.event.inputs.action == 'Plan&Destroy' }}
+        run: terraform plan -out="main.tfplan" -var-file="deploy.tfvars" 
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: |
-          echo "plan successful"
+          echo "plan failed"
           exit 1
 
-      - name: App01 Infra Deployment
-        if: ${{ github.event.inputs.action == 'plan&apply' }}
+      - name: AVD & Dependant Infra Resource Deployment
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.action == 'Plan&Apply' }}
         run: terraform apply --auto-approve "main.tfplan"
 
       - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'plan&destroy' }}
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.action == 'Plan&Destroy' }}
         run: terraform destroy -auto-approve -var-file="deploy.tfvars"
+     

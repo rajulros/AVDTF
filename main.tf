@@ -631,10 +631,26 @@ module "avm-res-keyvault-vault" {
   tenant_id           = var.tenant
   public_network_access_enabled = false
   legacy_access_policies_enabled = true
+  legacy_access_policies = {
+    test = {
+      object_id               = var.object_id
+      certificate_permissions = ["Get", "List"]
+      key_permissions = ["Get", "Create"]
+      secret_permissions = ["Set", "Get", "List", "Delete", "Purge", "Recover"]
+    }
+  }
+  secrets = {
+    test_secret = {
+      name = local.secretnameadminpassword
+    }
+  }
+  secrets_value = {
+    test_secret = random_password.admin_password.result
+  }
   network_acls = {
     default_action             = "Deny"
     bypass                     = "AzureServices"
-    }
+  }
   private_endpoints = {
     primary = {
       subnet_resource_id = data.azurerm_subnet.pe.id
@@ -769,27 +785,67 @@ locals {
 #   resource_group_name = data.azurerm_resource_group.shared.name                       # Replace with the resource group name where the Key Vault is deployed
 # }
  
-# # Retrieve the domain join username from Azure Key Vault
-# data "azurerm_key_vault_secret" "domain_username" {
-#   name         = local.secretnamedjusername
-#   key_vault_id = data.azurerm_key_vault.vault.id
-#   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
-# }
-# # Retrieve the domain join password from Azure Key Vault
-# data "azurerm_key_vault_secret" "domain_password" {
-#   name         = local.secretnamedjpassword
-#   key_vault_id = data.azurerm_key_vault.vault.id
-#   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
-# }
 
-# resource "random_password" "admin_password" {
-#   length           = 16
-#   special          = true
-#   override_special = "_%@"
-#   keepers = {
-#     constant = "same_password"
-#   }
-# }
+# Retrieve the domain join username from Azure Key Vault
+data "azurerm_key_vault_secret" "domain_username" {
+  name         = local.secretnamedjusername
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+# Retrieve the domain join password from Azure Key Vault
+data "azurerm_key_vault_secret" "domain_password" {
+  name         = local.secretnamedjpassword
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
+resource "random_password" "admin_password" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
+  keepers = {
+    constant = "same_password"
+  }
+}
+data "azurerm_key_vault_secret" "adminpwd" {
+  name         = local.secretnameadminpassword
+  #key_vault_id = module.avm-res-keyvault-vault["resource_id"]
+  key_vault_id = data.azurerm_key_vault.vault.id
+}
+
+// check the count
+module "avm-res-compute-virtualmachine" {
+  for_each = { for vm in local.vm_instances : "${vm.category}-${vm.type}-${vm.instance_index}" => vm }
+  source   = "Azure/avm-res-compute-virtualmachine/azurerm"
+  version  = "0.16.0"
+
+  # Required variables
+  network_interfaces = {
+    example_nic = {
+      name = "${each.key}-nic"
+      ip_configurations = {
+        ipconfig1 = {
+          name                          = "internal"
+          private_ip_subnet_resource_id = each.value.subnet
+        }
+      }
+    }
+  }
+  zone = "1"
+  name                = each.value.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  admin_username      = local.adminuser
+  admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+
+  # Image configuration
+  source_image_reference = {
+    publisher = "MicrosoftWindowsDesktop"
+    offer     = "Windows-11"
+    sku       = each.value.image_sku
+    version   = "latest"
+  }
+
 
 // check the count
 # module "avm-res-compute-virtualmachine" {
@@ -875,15 +931,18 @@ locals {
 #       type_handler_version       = "1.3"
 #       auto_upgrade_minor_version = true
     
-#       settings = <<-SETTINGS
-#         {
-#           "Name": "${local.domainname}",
-#           "OUPath": "${local.oupath}",
-#           "User": "${local.domainusername}",
-#           "Restart": "true",
-#           "Options": "3"
-#         }
-#         SETTINGS
+
+
+      settings = <<-SETTINGS
+        {
+          "Name": "${local.domainname}",
+          "OUPath": "${local.oupath}",
+          "User": "${data.azurerm_key_vault_secret.domain_username.value}",
+          "Restart": "true",
+          "Options": "3"
+        }
+        SETTINGS
+
     
 #       protected_settings = <<-PSETTINGS
 #         {
@@ -940,7 +999,7 @@ locals {
 #   location            = var.location
 #   resource_group_name = local.resource_group_name_avd
 #   admin_username      = local.appvserveradminusername
-#   admin_password      = random_password.admin_password.result
+
 
 #   sku_size = each.value.sku_size
 
@@ -968,9 +1027,11 @@ locals {
 #     name                 = disk.name
 #   }}
 
+
 #   tags = {
 #     environment = "dev"
 #   }
+
 
 #   extensions = {
 #     "dj" = {
@@ -984,7 +1045,9 @@ locals {
 #         {
 #           "Name": "${local.domainname}",
 #           "OUPath": "${local.oupath}",
-#           "User": "${local.domainusername}",
+
+#           "User": "${data.azurerm_key_vault_secret.domain_username.value}",
+
 #           "Restart": "true",
 #           "Options": "3"
 #         }
