@@ -126,7 +126,7 @@ locals {
   }
 }
 
-module "avm-res-network-networksecuritygroup" {
+/* module "avm-res-network-networksecuritygroup" {
   for_each = toset(local.nsg_names)
   source   = "Azure/avm-res-network-networksecuritygroup/azurerm"
   version  = "0.2.0"
@@ -319,7 +319,7 @@ module "avm-res-keyvault-vault" {
     }
   }
 }
-
+*/
 // Diagnostics
 module "avm-res-operationalinsights-workspace" {
   source              = "Azure/avm-res-operationalinsights-workspace/azurerm"
@@ -376,6 +376,31 @@ module "avm-res-storage-storageaccount" {
       private_service_connection_name = "filesc"
     }
   }
+  diagnostic_settings_storage_account = {
+    storage = {
+      name                    = "ds-storage"
+      workspace_resource_id   = module.avm-res-operationalinsights-workspace["resource_id"]
+    }
+  }
+}
+
+resource "azurerm_storage_share" "fileshare" {
+    count = local.filesharecount
+    name                 = "${local.filesharename}-${count.index}"
+    storage_account_name = local.fsstoragename
+    quota                = 100
+    depends_on           = [module.avm-res-storage-storageaccount]
+}
+
+#Azure Recovery Services vault
+module "resources_recovery_services_vault" {
+  source  = "azurerm/resources/azure//modules/recovery_services_vault"
+  version = "1.1.0"
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  custom_name         = local.recovery_vault_name
+  sku                 = "Standard"
+  soft_delete_enabled = true
 }
 
 # resource "azurerm_storage_share" "example" {
@@ -410,7 +435,7 @@ module "avm-res-storage-storageaccount" {
 # }
 
 
-
+/*
 
 // Session Host VM
 locals {
@@ -713,3 +738,5 @@ module "avm-res-network-publicipaddress" {
 #     environment = "dev"
 #   }
 # }
+*/
+

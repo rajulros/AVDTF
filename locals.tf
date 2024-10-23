@@ -110,6 +110,7 @@ locals {
     storagefilepename = "vdavdstoragefilepe"
     diagstoragename = "vddiagstoragename1"
     fsstoragename = "vdfsstoragename1"
+    filesharecount = 2
     artifactstoragename = "vdartifactstoragename1"
     filesharename = "vdlumenfilesharename1"
 
@@ -154,4 +155,7 @@ locals {
     operationalinsights_workspace_name            = "OperationalInsights02939vd"
 
     domain_name_avd = "privatelink.wvd.microsoft.com"
+
+    //Recovery service vault
+    recovery_vault_name = "rsv-avd-poc-01"
     }
