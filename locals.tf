@@ -99,7 +99,7 @@ locals {
 
 
     // Existing Keyvault
-    keyvault_name_existing = "kvavd005"
+    keyvault_name_existing = "kvavd008"
     secretnamedjusername = "AVDDJUN"
     secretnamedjpassword = "AVDDJPW"
     secretnameadminpassword = "admin-password"

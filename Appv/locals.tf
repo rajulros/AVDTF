@@ -23,7 +23,7 @@ locals {
     dns_rg_name = "RG-AVD-TF-WUS3"
 
     // Existing Keyvault
-    keyvault_name_existing = "kvavd005"
+    keyvault_name_existing = "kvavd008"
     secretnamedjusername = "AVDDJUN"
     secretnamedjpassword = "AVDDJPW"
     secretnameadminpassword = "admin-password"
