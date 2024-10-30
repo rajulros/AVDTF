@@ -18,11 +18,11 @@ data "azurerm_virtual_network" "this" {
   resource_group_name = data.azurerm_resource_group.vnet.name
 }
 
-data "azurerm_subnet" "image" {
-  name                 = local.subnet_image_name
-  resource_group_name  = data.azurerm_resource_group.vnet.name
-  virtual_network_name = data.azurerm_virtual_network.this.name
-}
+# data "azurerm_subnet" "image" {
+#   name                 = local.subnet_image_name
+#   resource_group_name  = data.azurerm_resource_group.vnet.name
+#   virtual_network_name = data.azurerm_virtual_network.this.name
+# }
 
 data "azurerm_subnet" "personal_hostpool" {
   name                 = local.subnet_personal_hostpool_name
@@ -48,12 +48,18 @@ data "azurerm_subnet" "bastion" {
   virtual_network_name = data.azurerm_virtual_network.this.name
 }
 
+data "azurerm_subnet" "firewall" {
+  name                 = local.subnet_firewall_name
+  resource_group_name  = data.azurerm_resource_group.vnet.name
+  virtual_network_name = data.azurerm_virtual_network.this.name
+}
+
 // DNS
 
-data "azurerm_private_dns_zone" "example" {
-  name                = "privatelink.bastion.azure.com"
-  resource_group_name = local.dns_rg_name
-}
+# data "azurerm_private_dns_zone" "example" {
+#   name                = "privatelink.bastion.azure.com"
+#   resource_group_name = local.dns_rg_name 
+# }
 
 data "azurerm_private_dns_zone" "example_blob" {
   name                = "privatelink.blob.core.windows.net"
@@ -77,7 +83,7 @@ data "azurerm_private_dns_zone" "example_avd" {
 
 // NSG creation 5
 locals {
-  nsg_names = [local.nsg_image_name, local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
+  nsg_names = [ local.nsg_personal_hostpool_name, local.nsg_pooled_hostpool_name, local.nsg_pe_name]
   security_rule = {
     example_rule = {
       name                       = "SSH"
@@ -140,10 +146,11 @@ module "avm-res-network-networksecuritygroup" {
 // NSG Subnet Association
 locals {
   subnet_nsg_associations = [
-    { subnet_id = data.azurerm_subnet.image.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_image_name].resource_id },
+    #{ subnet_id = data.azurerm_subnet.image.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_image_name].resource_id },
     { subnet_id = data.azurerm_subnet.personal_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_personal_hostpool_name].resource_id },
     { subnet_id = data.azurerm_subnet.pooled_hostpool.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pooled_hostpool_name].resource_id },
     { subnet_id = data.azurerm_subnet.pe.id, nsg_id = module.avm-res-network-networksecuritygroup[local.nsg_pe_name].resource_id }
+
   ]
 }
 
@@ -155,6 +162,335 @@ resource "azurerm_subnet_network_security_group_association" "this" {
   subnet_id                 = each.value.subnet_id
   network_security_group_id = each.value.nsg_id
 }
+//firewalls
+
+locals {
+  firewall_name = "avd-firewall"  
+  firewall_sku_name  = "AZFW_VNet"  
+  firewall_sku_tier  = "Standard"   
+  firewall_zones     = ["1", "2", "3"] 
+}
+
+module "avm-res-network-azurefirewall" {
+  source  = "Azure/avm-res-network-azurefirewall/azurerm"
+  version = "0.3.0"
+  # insert the 5 required variables here
+  name                = local.firewall_name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  firewall_sku_tier   = local.firewall_sku_tier
+  firewall_sku_name   = local.firewall_sku_name
+  firewall_zones      = local.firewall_zones
+  firewall_ip_configuration = [
+    {
+      name                 = "ipconfig1"
+      subnet_id            = data.azurerm_subnet.firewall.id
+      public_ip_address_id = module.avm-res-network-publicipaddress.public_ip_id
+    }
+  ]
+  firewall_policy_id = module.firewall_policy.resource.id
+}
+
+locals {
+  name                = "fwpolicy"
+}
+
+module "firewall_policy" {
+  source              = "Azure/avm-res-network-firewallpolicy/azurerm"
+  name                = local.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  firewall_policy_dns = {
+    proxy_enabled = true
+  }
+}
+
+
+locals {
+  firewall_policy_rule_collection_group = {
+    name     = "rules"
+    priority = 100
+    network_rule_collection = [
+      {
+        action   = "Allow"
+        name     = "net-rule"
+        priority = 100
+        rule = [
+          {
+            name                  = "OutboundToInternet"
+            description           = "Allow traffic outbound to the Internet"
+            destination_addresses = ["0.0.0.0/0"]
+            destination_ports     = ["443"]
+            source_addresses      = ["10.0.0.0/24"]
+            protocols             = ["TCP"]
+          }
+        ]
+      }
+    ]
+    application_rule_collection = [
+      {
+        action   = "Allow"
+        name     = "app-rule"
+        priority = 100
+        rule = [
+          {
+            name             = "AllowAll"
+            description      = "Allow traffic to Microsoft.com"
+            source_addresses = ["10.0.0.0/24"]
+            protocols = [
+              {
+                port = 443
+                type = "Https"
+              }
+            ]
+            destination_fqdns = ["microsoft.com"]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# module "avm-res-network-firewallpolicy_rule_collection_groups" {
+#   source  = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+#   version = "0.3.1"
+#   firewall_policy_rule_collection_group_firewall_policy_id = module.firewall_policy.resource.id
+#   firewall_policy_rule_collection_group_name               = local.firewall_policy_rule_collection_group.name
+#   firewall_policy_rule_collection_group_priority           = local.firewall_policy_rule_collection_group.priority
+#   firewall_policy_rule_collection_group_network_rule_collection = local.firewall_policy_rule_collection_group.network_rule_collection
+#   firewall_policy_rule_collection_group_application_rule_collection = local.firewall_policy_rule_collection_group.application_rule_collection
+# }
+
+module "avd_core_rule_collection_group" {
+  source             = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+  firewall_policy_rule_collection_group_firewall_policy_id = module.firewall_policy.resource.id
+  firewall_policy_rule_collection_group_name               = "NetworkRuleCollectionGroup"
+  firewall_policy_rule_collection_group_priority           = 1000
+  firewall_policy_rule_collection_group_network_rule_collection = [{
+    action   = "Allow"
+    name     = "AVDCoreNetworkRules"
+    priority = 500
+    rule = [
+      {
+        name              = "Login to Microsoft"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["login.microsoftonline.com"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name                  = "AVD"
+        source_addresses      = ["10.100.0.0/24"]
+        destination_addresses = ["WindowsVirtualDesktop", "AzureFrontDoor.Frontend", "AzureMonitor"]
+        protocols             = ["TCP"]
+        destination_ports     = ["443"]
+      },
+      {
+        name              = "GCS"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["gcs.prod.monitoring.core.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name                  = "DNS"
+        source_addresses      = ["10.100.0.0/24"]
+        destination_addresses = ["AzureDNS"]
+        protocols             = ["TCP", "UDP"]
+        destination_ports     = ["53"]
+      },
+      {
+        name              = "azkms"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["azkms.core.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["1688"]
+      },
+      {
+        name              = "KMS"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["kms.core.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["1688"]
+      },
+      {
+        name              = "mrglobalblob"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["mrsglobalsteus2prod.blob.core.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name              = "wvdportalstorageblob"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["wvdportalstorageblob.blob.core.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name              = "oneocsp"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["oneocsp.microsoft.com"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name              = "microsoft.com"
+        source_addresses  = ["10.100.0.0/24"]
+        destination_fqdns = ["www.microsoft.com"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+    ]
+    }
+  ]
+}
+
+
+module "avd_optional_rule_collection_group" {
+  source             = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+  firewall_policy_rule_collection_group_firewall_policy_id = module.firewall_policy.resource.id
+  firewall_policy_rule_collection_group_name               = "AVDOptionalRuleCollectionGroup"
+  firewall_policy_rule_collection_group_priority           = 1050
+  firewall_policy_rule_collection_group_network_rule_collection = [{
+    action   = "Allow"
+    name     = "AVDOptionalNetworkRules"
+    priority = 500
+    rule = [
+      {
+        name              = "time"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["time.windows.com"]
+        protocols         = ["UDP"]
+        destination_ports = ["123"]
+      },
+      {
+        name              = "login windows.net"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["login.windows.net"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+      {
+        name              = "msftconnecttest"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["www.msftconnecttest.com"]
+        protocols         = ["TCP"]
+        destination_ports = ["443"]
+      },
+    ]
+    }
+  ]
+
+  firewall_policy_rule_collection_group_application_rule_collection = [{
+    action   = "Allow"
+    name     = "AVDOptionalApplicationRules"
+    priority = 600
+    rule = [
+      {
+        name                  = "Windows"
+        source_addresses      = ["10.0.0.0/24"]
+        destination_fqdn_tags = ["WindowsUpdate", "WindowsDiagnostics", "MicrosoftActiveProtectionService"]
+        protocols = [
+          {
+            port = 443
+            type = "Https"
+          }
+        ]
+      },
+      {
+        name              = "Events"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["*.events.data.microsoft.com"]
+        protocols = [
+          {
+            port = 443
+            type = "Https"
+          }
+        ]
+      },
+      {
+        name              = "sfx"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["*.sfx.ms"]
+        protocols = [
+          {
+            port = 443
+            type = "Https"
+          }
+        ]
+      },
+      {
+        name              = "digicert"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["*.digicert.com"]
+        protocols = [
+          {
+            port = 443
+            type = "Https"
+          }
+        ]
+      },
+      {
+        name              = "Azure DNS"
+        source_addresses  = ["10.0.0.0/24"]
+        destination_fqdns = ["*.azure-dns.com", "*.azure-dns.net"]
+        protocols = [
+          {
+            port = 443
+            type = "Https"
+          }
+        ]
+      },
+    ]
+    }
+  ]
+}
+
+module "m365rulecollectiongroup" {
+  source             = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+  firewall_policy_rule_collection_group_firewall_policy_id = module.firewall_policy.resource.id
+  firewall_policy_rule_collection_group_name               = "M365RuleCollectionGroup"
+  firewall_policy_rule_collection_group_priority           = 2000
+  firewall_policy_rule_collection_group_network_rule_collection = [{
+    action   = "Allow"
+    name     = "M365NetworkRules"
+    priority = 500
+    rule = [
+      {
+        name                  = "M365"
+        source_addresses      = ["10.0.0.0/24"]
+        destination_addresses = ["Office365.Common.Allow.Required"]
+        protocols             = ["TCP"]
+        destination_ports     = ["443"]
+      }
+    ]
+    }
+  ]
+}
+
+module "internetrulecollectiongroup" {
+  source             = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
+  firewall_policy_rule_collection_group_firewall_policy_id = module.firewall_policy.resource.id
+  firewall_policy_rule_collection_group_name               = "InternetRuleCollectionGroup"
+  firewall_policy_rule_collection_group_priority           = 3000
+  firewall_policy_rule_collection_group_network_rule_collection = [{
+    action   = "Allow"
+    name     = "InternetNetworkRules"
+    priority = 500
+    rule = [
+      {
+        name                  = "Internet"
+        source_addresses      = ["10.0.0.0/24"]
+        destination_addresses = ["*"]
+        protocols             = ["TCP"]
+        destination_ports     = ["443", "80"]
+      }
+    ]
+    }
+  ]
+}
+
 
 
 // HP
@@ -194,6 +530,12 @@ locals {
       preferred_app_group_type = local.virtual_desktop_host_pool4_preferred_app_group_type
     }
   ]
+  #  diagnostic_settings = {
+  #   to_law = {
+  #     name                  = "to-law"
+  #     workspace_resource_id = module.avm-res-operationalinsights-workspace.resource.id
+  #   }
+  #   }
 }
 
 module "HP" {
@@ -218,6 +560,7 @@ module "HP" {
       private_service_connection_name = "hostpoolsc"
     }
   }
+  # diagnostic_settings = local.diagnostic_settings
 }
 
 //Remote Apps
@@ -378,6 +721,7 @@ module "avm-res-storage-storageaccount" {
   }
 }
 
+
 # resource "azurerm_storage_share" "example" {
 #   name                 = local.filesharename
 #   storage_account_name = local.fsstoragename
@@ -441,6 +785,7 @@ data "azurerm_key_vault" "vault" {
   resource_group_name = data.azurerm_resource_group.shared.name                       # Replace with the resource group name where the Key Vault is deployed
 }
  
+<<<<<<< HEAD
 # Retrieve the domain join username from Azure Key Vault
 data "azurerm_key_vault_secret" "domain_username" {
   name         = local.secretnamedjusername
@@ -454,6 +799,22 @@ data "azurerm_key_vault_secret" "domain_password" {
   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
 }
 
+=======
+
+# Retrieve the domain join username from Azure Key Vault
+data "azurerm_key_vault_secret" "domain_username" {
+  name         = local.secretnamedjusername
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+# Retrieve the domain join password from Azure Key Vault
+data "azurerm_key_vault_secret" "domain_password" {
+  name         = local.secretnamedjpassword
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
+>>>>>>> 63c44cbdf8f55fb92769d31c19a27c1db9d21436
 resource "random_password" "admin_password" {
   length           = 16
   special          = true
@@ -461,6 +822,9 @@ resource "random_password" "admin_password" {
   keepers = {
     constant = "same_password"
   }
+<<<<<<< HEAD
+ }
+=======
 }
 data "azurerm_key_vault_secret" "adminpwd" {
   name         = local.secretnameadminpassword
@@ -492,6 +856,41 @@ module "avm-res-compute-virtualmachine" {
   resource_group_name = data.azurerm_resource_group.avd.name
   admin_username      = local.adminuser
   admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+
+  # Image configuration
+  source_image_reference = {
+    publisher = "MicrosoftWindowsDesktop"
+    offer     = "Windows-11"
+    sku       = each.value.image_sku
+    version   = "latest"
+  }
+
+>>>>>>> 63c44cbdf8f55fb92769d31c19a27c1db9d21436
+
+// check the count
+module "avm-res-compute-virtualmachine" {
+  for_each = { for vm in local.vm_instances : "${vm.category}-${vm.type}-${vm.instance_index}" => vm }
+  source   = "Azure/avm-res-compute-virtualmachine/azurerm"
+  version  = "0.16.0"
+
+  # Required variables
+  network_interfaces = {
+    example_nic = {
+      name = "${each.key}-nic"
+      ip_configurations = {
+        ipconfig1 = {
+          name                          = "internal"
+          private_ip_subnet_resource_id = each.value.subnet
+        }
+      }
+    }
+  }
+  zone = "1"
+  name                = each.value.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.avd.name
+  admin_username      = local.adminuser
+  admin_password      = random_password.admin_password.result
 
   # Image configuration
   source_image_reference = {
@@ -552,15 +951,28 @@ module "avm-res-compute-virtualmachine" {
       type_handler_version       = "1.3"
       auto_upgrade_minor_version = true
     
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 63c44cbdf8f55fb92769d31c19a27c1db9d21436
       settings = <<-SETTINGS
         {
           "Name": "${local.domainname}",
           "OUPath": "${local.oupath}",
+<<<<<<< HEAD
+          "User": "${local.domainusername}",
+=======
           "User": "${data.azurerm_key_vault_secret.domain_username.value}",
+>>>>>>> 63c44cbdf8f55fb92769d31c19a27c1db9d21436
           "Restart": "true",
           "Options": "3"
         }
         SETTINGS
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63c44cbdf8f55fb92769d31c19a27c1db9d21436
     
       protected_settings = <<-PSETTINGS
         {
@@ -568,6 +980,7 @@ module "avm-res-compute-virtualmachine" {
         }
         PSETTINGS
     }
+    
   }
 }
 
@@ -617,7 +1030,7 @@ module "avm-res-compute-virtualmachine" {
 #   location            = var.location
 #   resource_group_name = local.resource_group_name_avd
 #   admin_username      = local.appvserveradminusername
-#   admin_password      = "${data.azurerm_key_vault_secret.adminpwd.value}"
+
 
 #   sku_size = each.value.sku_size
 
@@ -645,9 +1058,11 @@ module "avm-res-compute-virtualmachine" {
 #     name                 = disk.name
 #   }}
 
+
 #   tags = {
 #     environment = "dev"
 #   }
+
 
 #   extensions = {
 #     "dj" = {
@@ -661,7 +1076,9 @@ module "avm-res-compute-virtualmachine" {
 #         {
 #           "Name": "${local.domainname}",
 #           "OUPath": "${local.oupath}",
+
 #           "User": "${data.azurerm_key_vault_secret.domain_username.value}",
+
 #           "Restart": "true",
 #           "Options": "3"
 #         }

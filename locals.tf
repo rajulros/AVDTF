@@ -6,22 +6,24 @@ locals {
     domainusername = "svcavddj@manageddevices.in"
     virtualmachinename = "vdvmlumen"
     virtual_network_name = "AVD-TF-VNET"
-    subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
+    #subnet_image_name         = "vd-snet-image-n-mgmt-avd-poc-cus-01"
     subnet_personal_hostpool_name = "vd-snet-personal-wklds-avd-poc-cus-01"
     subnet_pooled_hootpool_name = "vd-snet-pool-wklds-avd-poc-cus-01"
     subnet_bastion_name = "AzureBastionSubnet"
     subnet_pe_name = "vd-snet-pe-avd-poc-cus-01"
+    subnet_firewall_name = "AzureFirewallSubnet"
 
     resource_group_name_vnet = "RG-AVD-TF-WUS3"
     resource_group_name_shared = "RG-AVD-TF-WUS3"
     resource_group_name_avd = "RG-AVD-TF-WUS3"
     resource_group_name_dns = "RG-AVD-TF-WUS3"
 
-    nsg_image_name = "vd-nsg-image-avd-poc-cus-01"
+    #nsg_image_name = "vd-nsg-image-avd-poc-cus-01"
     nsg_personal_hostpool_name = "vd-nsg-personal-wklds-avd-poc-cus-01"
     nsg_pooled_hostpool_name = "vd-nsg-pool-wklds-avd-poc-cus-01"
     nsg_bastion_name = "AzureBastionSubnet"
     nsg_pe_name = "vd-nsg-pe-avd-poc-cus-01"
+    
 
     avd_rg_name = "RG-AVD-TF-WUS3"
     avd_rg_shared_name = "RG-AVD-TF-WUS3"
@@ -155,3 +157,5 @@ locals {
 
     domain_name_avd = "privatelink.wvd.microsoft.com"
     }
+
+    
