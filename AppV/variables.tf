@@ -1,6 +1,6 @@
 variable "object_id" {
-  type        = string
-  description = "the object ID "
+  type = string
+  description = "the object ID " 
 }
 
 variable "tenant" {
