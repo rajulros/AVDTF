@@ -242,7 +242,7 @@ module "appV" {
       type                        = "CustomScriptExtension"
       type_handler_version        = "1.10"
       auto_upgrade_minor_version  = true
-      automatic_upgrade_enabled   = true
+      automatic_upgrade_enabled   = false
       failure_suppression_enabled = true
       settings                    = <<SETTINGS
          {      
