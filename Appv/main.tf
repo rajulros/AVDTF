@@ -185,12 +185,18 @@ module "appV" {
   sku_size = each.value.sku_size
 
   # Image configuration
-  source_image_reference = {
+  source_image_reference = each.value.name == local.appv_vm1_name ? {
+    offer     = local.appvdb_offer
+    publisher = local.appvdb_offer
+    sku       = local.appvdb_sku
+    version   = local.appvdb_version
+  } : {
     offer     = local.appv_offer
     publisher = local.appv_publisher
     sku       = local.appv_sku
     version   = local.appv_version
   }
+
 
   # Optional variables (add as needed)
   os_disk = {
@@ -236,7 +242,8 @@ module "appV" {
         }
         PSETTINGS
     }
-     "install_web_features" = {
+    "install_web_features" = {
+      count                       = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? 1 : 0
       name                        = "InstallWebFeatures"
       publisher                   = "Microsoft.Compute"
       type                        = "CustomScriptExtension"
