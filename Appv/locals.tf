@@ -37,7 +37,7 @@ locals {
     artifactstoragename = "vdartifactstoragename1"
     filesharename = "vdlumenfilesharename1"
 
-    // AppV  3 VM Names
+    // AppV  all 3 VM Names
     appv_vm1_name = "appv-vm1"
     appv_vm2_name = "appv-vm2"
     appv_vm3_name = "appv-vm3"
@@ -65,14 +65,17 @@ locals {
       { size_gb = 1024, type = "Premium_LRS", name = "appv-vm3-disk1", lun = 0 }
       ]
 
-    // AppV image Sku
+    // AppV Server image Sku
     appv_sku = "2022-datacenter"
     appv_offer = "WindowsServer"
     appv_publisher = "MicrosoftWindowsServer"
     appv_version = "latest"
 
+    appvdb_sku = "standard-gen2"
+    appvdb_offer = "sql2022-ws2022"
+    appvdb_publisher = "MicrosoftSQLServer"
+    appvdb_version= "latest"
+
     // key Vault name
     keyvault_name = "kvlumenavd007"
-
-
-    }
+}
