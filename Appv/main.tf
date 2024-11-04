@@ -255,7 +255,7 @@ module "appV" {
         PSETTINGS
     }
     "install_web_features" = {
-      for_each = { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) }
+      for_each = length([for vm in local.appv_vms : vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name)]) > 0 ? { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) } : {}
 
       name                        = "InstallWebFeatures"
       publisher                   = "Microsoft.Compute"
