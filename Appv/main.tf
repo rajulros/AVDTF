@@ -122,6 +122,18 @@ data "azurerm_key_vault_secret" "domain_password" {
   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
 }
 
+data "azurerm_key_vault_secret" "sql_username" {
+  name         = local.secretnamedsqlusername
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
+data "azurerm_key_vault_secret" "sql_password" {
+  name         = local.secretnamedsqlpassword
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
 resource "random_password" "admin_password" {
   length           = 16
   special          = true
@@ -155,6 +167,9 @@ locals {
       data_disks = local.appv_vm3_data_disk_size
     }
   ]
+  filtered_appv_vms = [
+    for vm in local.appv_vms : vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name)
+  ]
 }
 
 module "appV" {
@@ -187,7 +202,7 @@ module "appV" {
   # Image configuration
   source_image_reference = each.value.name == local.appv_vm1_name ? {
     offer     = local.appvdb_offer
-    publisher = local.appvdb_offer
+    publisher = local.appvdb_publisher
     sku       = local.appvdb_sku
     version   = local.appvdb_version
   } : {
@@ -242,24 +257,70 @@ module "appV" {
         }
         PSETTINGS
     }
-    "install_web_features" = {
-      count                       = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? 1 : 0
-      name                        = "InstallWebFeatures"
-      publisher                   = "Microsoft.Compute"
-      type                        = "CustomScriptExtension"
-      type_handler_version        = "1.10"
-      auto_upgrade_minor_version  = true
-      automatic_upgrade_enabled   = false
-      failure_suppression_enabled = true
-      settings                    = <<SETTINGS
-         {      
-          "commandToExecute" : "powershell.exe -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name Web-App-Dev, Web-Net-Ext, Web-Net-Ext45, Web-Asp-Net, Web-Asp-Net45, Web-ISAPI-Filter, Web-ISAPI-Ext, Web-Security, Web-Windows-Auth\""
-         }
-        SETTINGS
-
-      provision_after_extensions = []
-      # settings                   = {}
-      # tags                       = {}
-    }
   }
 }
+
+resource "azurerm_virtual_machine_extension" "install_web_features" {
+  for_each = { for vm in local.filtered_appv_vms : vm.name => vm }
+
+  name                        = "InstallWebFeatures"
+  virtual_machine_id          = module.appV[each.key].resource_id
+  publisher                   = "Microsoft.Compute"
+  type                        = "CustomScriptExtension"
+  type_handler_version        = "1.10"
+  auto_upgrade_minor_version  = true
+  automatic_upgrade_enabled   = false
+  failure_suppression_enabled = true
+
+  settings = <<SETTINGS
+  {
+    "commandToExecute" : "powershell.exe -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name Web-App-Dev, Web-Net-Ext, Web-Net-Ext45, Web-Asp-Net, Web-Asp-Net45, Web-ISAPI-Filter, Web-ISAPI-Ext, Web-Security, Web-Windows-Auth\""
+  }
+  SETTINGS
+}
+
+
+resource "azurerm_mssql_virtual_machine" "mssql_vm" {
+  count = local.appv_vm1_name == local.appv_vm1_name ? 1 : 0  # Replace this line
+
+  virtual_machine_id               = module.appV[local.appv_vm1_name].resource_id  # Update here to use resource_id
+  sql_license_type                 = "AHUB"
+  r_services_enabled               = false
+  sql_connectivity_port            = 1433
+  sql_connectivity_type            = "PRIVATE"
+  sql_connectivity_update_password = data.azurerm_key_vault_secret.sql_password.value
+  sql_connectivity_update_username = data.azurerm_key_vault_secret.sql_username.value
+
+  sql_instance {
+      collation = "SQL_Latin1_General_CP1_CI_AS"
+    }
+
+  storage_configuration {
+    disk_type = "NEW"
+    storage_workload_type = "OLTP"
+
+    data_settings {
+      default_file_path = "F:\\data"
+      luns      = [0]
+    }
+    log_settings {
+      default_file_path = "G:\\log"
+      luns      = [1]
+    }
+    temp_db_settings {
+      default_file_path = "H:\\tempDb"
+      data_file_count = 8
+      data_file_size_mb = 8
+      data_file_growth_in_mb = 64
+      log_file_size_mb = 8
+      log_file_growth_mb = 64
+      luns      = [2]
+    }
+
+  }
+
+  depends_on = [ module.appV ]
+}
+
+
+
