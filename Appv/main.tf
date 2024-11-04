@@ -315,12 +315,7 @@ resource "azurerm_mssql_virtual_machine" "mssql_vm" {
     }
 
   }
-
-  # auto_patching {
-  #   day_of_week                            = "Sunday"
-  #   maintenance_window_duration_in_minutes = 60
-  #   maintenance_window_starting_hour       = 2
-  # }
+  
   depends_on = [ module.appV ]
 }
 
