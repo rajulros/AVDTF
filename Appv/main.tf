@@ -254,26 +254,24 @@ module "appV" {
         }
         PSETTINGS
     }
-    "install_web_features" = {
-      for_each = length([for vm in local.appv_vms : vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name)]) > 0 ? { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) } : {}
+    # "install_web_features" = {
+    #   for_each = length([for vm in local.appv_vms : vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name)]) > 0 ? { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) } : {}
 
-      name                        = "InstallWebFeatures"
-      publisher                   = "Microsoft.Compute"
-      type                        = "CustomScriptExtension"
-      type_handler_version        = "1.10"
-      auto_upgrade_minor_version  = true
-      automatic_upgrade_enabled   = false
-      failure_suppression_enabled = true
-      settings                    = <<SETTINGS
-         {      
-          "commandToExecute" : "powershell.exe -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name Web-App-Dev, Web-Net-Ext, Web-Net-Ext45, Web-Asp-Net, Web-Asp-Net45, Web-ISAPI-Filter, Web-ISAPI-Ext, Web-Security, Web-Windows-Auth\""
-         }
-        SETTINGS
+    #   name                        = "InstallWebFeatures"
+    #   publisher                   = "Microsoft.Compute"
+    #   type                        = "CustomScriptExtension"
+    #   type_handler_version        = "1.10"
+    #   auto_upgrade_minor_version  = true
+    #   automatic_upgrade_enabled   = false
+    #   failure_suppression_enabled = true
+    #   settings                    = <<SETTINGS
+    #      {      
+    #       "commandToExecute" : "powershell.exe -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name Web-App-Dev, Web-Net-Ext, Web-Net-Ext45, Web-Asp-Net, Web-Asp-Net45, Web-ISAPI-Filter, Web-ISAPI-Ext, Web-Security, Web-Windows-Auth\""
+    #      }
+    #     SETTINGS
 
-      provision_after_extensions = []
-      # settings                   = {}
-      # tags                       = {}
-    }
+    #   provision_after_extensions = []
+    # }
   }
 }
 
