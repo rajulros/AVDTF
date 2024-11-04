@@ -255,7 +255,8 @@ module "appV" {
         PSETTINGS
     }
     "install_web_features" = {
-      for_each                   = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? { each.value.name : each.value } : {}
+      for_each = { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) }
+
       name                        = "InstallWebFeatures"
       publisher                   = "Microsoft.Compute"
       type                        = "CustomScriptExtension"
