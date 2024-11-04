@@ -122,6 +122,18 @@ data "azurerm_key_vault_secret" "domain_password" {
   #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
 }
 
+data "azurerm_key_vault_secret" "sql_username" {
+  name         = local.secretnamedsqlusername
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
+data "azurerm_key_vault_secret" "sql_password" {
+  name         = local.secretnamedsqlpassword
+  key_vault_id = data.azurerm_key_vault.vault.id
+  #key_vault_id = "/subscriptions/8ac116fa-33ed-4b86-a94e-f39228fecb4a/resourceGroups/AD/providers/Microsoft.KeyVault/vaults/avd-domainjoin-for-lumen"
+}
+
 resource "random_password" "admin_password" {
   length           = 16
   special          = true
@@ -273,13 +285,13 @@ resource "azurerm_mssql_virtual_machine" "mssql_vm" {
   r_services_enabled               = false
   sql_connectivity_port            = 1433
   sql_connectivity_type            = "PRIVATE"
-  sql_connectivity_update_password = data.azurerm_key_vault_secret.sqladmin-pw.value
-  sql_connectivity_update_username = data.azurerm_key_vault_secret.sqladmin.value
+  sql_connectivity_update_password = data.azurerm_key_vault_secret.sql_password.value
+  sql_connectivity_update_username = data.azurerm_key_vault_secret.sql_username.value
 
   sql_instance {
       collation = "SQL_Latin1_General_CP1_CI_AS"
     }
-    
+
   storage_configuration {
     disk_type = "NEW"
     storage_workload_type = "OLTP"

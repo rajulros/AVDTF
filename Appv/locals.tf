@@ -27,6 +27,8 @@ locals {
     secretnamedjusername = "AVDDJUN"
     secretnamedjpassword = "AVDDJPW"
     secretnameadminpassword = "admin-password"
+    secretnamedsqlusername = "sqladmin"
+    secretnamedsqlpassword = "sqladmin-pw"
 
     // storage
     storage_account_name = "vdavdstorageaccount1"
