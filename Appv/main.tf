@@ -167,6 +167,9 @@ locals {
       data_disks = local.appv_vm3_data_disk_size
     }
   ]
+  filtered_appv_vms = [
+    for vm in local.appv_vms : vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name)
+  ]
 }
 
 module "appV" {
@@ -255,7 +258,7 @@ module "appV" {
         PSETTINGS
     }
     "install_web_features" = {
-      for_each                    = local.filtered_appv_vms
+      for_each = { for vm in local.filtered_appv_vms : vm.name => vm }
       name                        = "InstallWebFeatures"
       publisher                   = "Microsoft.Compute"
       type                        = "CustomScriptExtension"
@@ -272,10 +275,6 @@ module "appV" {
       provision_after_extensions = []
     }
   }
-}
-
-locals {
-  filtered_appv_vms = { for vm in local.appv_vms : vm.name => vm if contains([local.appv_vm2_name, local.appv_vm3_name], vm.name) }
 }
 
 
