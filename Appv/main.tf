@@ -263,3 +263,54 @@ module "appV" {
     }
   }
 }
+
+
+resource "azurerm_mssql_virtual_machine" "mssql_vm" {
+  count = local.appv_vm1_name == local.appv_vm1_name ? 1 : 0  # Replace this line
+
+  virtual_machine_id               = module.appV[local.appv_vm1_name].resource_id  # Update here to use resource_id
+  sql_license_type                 = "AHUB"
+  r_services_enabled               = false
+  sql_connectivity_port            = 1433
+  sql_connectivity_type            = "PRIVATE"
+  sql_connectivity_update_password = data.azurerm_key_vault_secret.sqladmin-pw.value
+  sql_connectivity_update_username = data.azurerm_key_vault_secret.sqladmin.value
+
+  sql_instance {
+      collation = "SQL_Latin1_General_CP1_CI_AS"
+    }
+    
+  storage_configuration {
+    disk_type = "NEW"
+    storage_workload_type = "OLTP"
+
+    data_settings {
+      default_file_path = "F:\\data"
+      luns      = [0]
+    }
+    log_settings {
+      default_file_path = "G:\\log"
+      luns      = [1]
+    }
+    temp_db_settings {
+      default_file_path = "H:\\tempDb"
+      data_file_count = 8
+      data_file_size_mb = 8
+      data_file_growth_in_mb = 64
+      log_file_size_mb = 8
+      log_file_growth_mb = 64
+      luns      = [2]
+    }
+
+  }
+
+  # auto_patching {
+  #   day_of_week                            = "Sunday"
+  #   maintenance_window_duration_in_minutes = 60
+  #   maintenance_window_starting_hour       = 2
+  # }
+  depends_on = [ module.appV ]
+}
+
+
+
