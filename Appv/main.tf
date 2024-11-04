@@ -199,7 +199,7 @@ module "appV" {
   # Image configuration
   source_image_reference = each.value.name == local.appv_vm1_name ? {
     offer     = local.appvdb_offer
-    publisher = local.appvdb_offer
+    publisher = local.appvdb_publisher
     sku       = local.appvdb_sku
     version   = local.appvdb_version
   } : {
@@ -315,7 +315,7 @@ resource "azurerm_mssql_virtual_machine" "mssql_vm" {
     }
 
   }
-  
+
   depends_on = [ module.appV ]
 }
 

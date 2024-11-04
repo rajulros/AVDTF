@@ -74,7 +74,7 @@ locals {
     appv_version = "latest"
 
     appvdb_sku = "standard-gen2"
-    appvdb_offer = "sql2019-ws2022"
+    appvdb_offer = "sql2022-ws2022"
     appvdb_publisher = "microsoftsqlserver"
     appvdb_version= "latest"
 
