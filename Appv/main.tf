@@ -255,8 +255,7 @@ module "appV" {
         PSETTINGS
     }
     "install_web_features" = {
-      #count                       = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? 1 : 0
-      for_each                   = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? { "${each.key}_install_web_features" = each.key } : {}
+      for_each                   = contains([local.appv_vm2_name, local.appv_vm3_name], each.value.name) ? { each.value.name : each.value } : {}
       name                        = "InstallWebFeatures"
       publisher                   = "Microsoft.Compute"
       type                        = "CustomScriptExtension"
